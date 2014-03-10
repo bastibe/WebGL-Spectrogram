@@ -20,13 +20,21 @@ function start() {
         gl.enable(gl.DEPTH_TEST);
         gl.depthFunc(gl.LEQUAL);
         gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
-        gl.viewport(0, 0, canvas.width, canvas.height); // set resolution
-        console.log('starting');
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        logInfo();
         initShaders();
         initBuffers();
         initTextures();
         setInterval(drawScene, 15);
     }
+}
+
+function logInfo() {
+    console.log('Version:', gl.getParameter(gl.VERSION));
+    console.log('ShadingLanguageVersion:', gl.getParameter(gl.SHADING_LANGUAGE_VERSION));
+    console.log('Vendor:', gl.getParameter(gl.VENDOR));
+    console.log('Renderer:', gl.getParameter(gl.RENDERER));
+    console.log('MaxTextureSize:', gl.getParameter(gl.MAX_TEXTURE_SIZE));
 }
 
 function initWebGL(canvas) {
@@ -36,6 +44,15 @@ function initWebGL(canvas) {
     } catch (e) {
         alert('Could not initialize WebGL');
         gl = null;
+    }
+    gl.getExtension("OES_texture_float");
+    var error = gl.getError();
+    if (error != gl.NO_ERROR) {
+        alert("Could not enable float texture extension because");
+    }
+    gl.getExtension("OES_texture_float_linear");
+    if (error != gl.NO_ERROR) {
+        alert("Could not enable float texture linear extension because");
     }
     return gl;
 }
@@ -139,6 +156,16 @@ function initTextures() {
 function handleTextureLoaded(image, texture) {
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+}
+
+function handleSpectrogramLoaded(spectrogram, nfreqs, nblocks) {
+    gl.bindTexture(gl.TEXTURE_2D, specTexture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, nblocks, nfreqs, 0, gl.LUMINANCE, gl.FLOAT, spectrogram);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);

@@ -35,10 +35,7 @@ ws.onmessage = function(event) {
             return
         }
         var data = new Float32Array(event.data, header_len+4);
-        if (header.type === 'spectrogram') {
-            var dummyTexture = new Float32Array(256);
-            for (var i in data) { dummyTexture[i] = i/dummyTexture.byteLength*4; }
-        }
+        handleSpectrogramLoaded(data, header.extent[0], header.extent[1]);
     } else {
         try {
             msg = JSON.parse(event.data)
@@ -53,5 +50,5 @@ ws.onmessage = function(event) {
 var container = document.getElementById('spectrogram');
 
 spectrogram.onclick = function(event) {
-    request_spectrogram('thistle.wav')
+    request_spectrogram('thistle_short.wav')
 };
