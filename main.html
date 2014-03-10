@@ -4,8 +4,34 @@
     <title>My first Three.js app</title>
     <style>canvas { width: 100%; height: 100% }</style>
   </head>
-  <body>
-    <script src="three.min.js"></script>
+  <body onload="start()">
+    <canvas width="500" height="500" id="spectrogram"></canvas>
+    <script id="fragmentShader" type="x-shader/x-fragment">
+      varying highp vec2 vTextureCoord;
+
+      uniform sampler2D uSampler;
+
+      void main() {
+          gl_FragColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+      }
+    </script>
+    <script id="vertexShader" type="x-shader/x-vertex">
+      attribute vec3 aVertexPosition;
+      attribute vec2 aTextureCoord;
+
+      uniform mat4 uMVMatrix; // model view matrix
+      uniform mat4 uPMatrix;  // projection matrix
+
+      varying highp vec2 vTextureCoord;
+
+      void main() {
+          gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+          vTextureCoord = aTextureCoord;
+      }
+    </script>
+    <script src="sylvester.js"></script>
+    <script src="glUtils.js"></script>
     <script src="spectrogram.js"></script>
+    <script src="communication.js"></script>
   </body>
 </html>
