@@ -2,11 +2,10 @@ var canvas;
 var gl;
 var squareVerticesBuffer;
 var squareVerticesTextureCoordBuffer;
-var mvMatrix;
 var shaderProgram;
+
 var vertexPositionAttribute;
 var textureCoordAttribute;
-var perspectiveMatrix;
 
 var specImage;
 var specTexture;
@@ -180,14 +179,10 @@ function drawScene() {
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    perspectiveMatrix = makePerspective(45, 640.0/480.0, 0.1, 100.0);
-
-    loadIdentity();
-    mvTranslate([-0.0, 0.0, -6.0]);
-
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, specTexture);
-    gl.uniform1i(gl.getUniformLocation(shaderProgram, 'uSampler'), 0);
+    var samplerUniform = gl.getUniformLocation(shaderProgram, 'uSampler');
+    gl.uniform1i(samplerUniform, 0);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, squareVerticesBuffer);
     gl.vertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0);
@@ -195,26 +190,5 @@ function drawScene() {
     gl.bindBuffer(gl.ARRAY_BUFFER, squareVerticesTextureCoordBuffer);
     gl.vertexAttribPointer(textureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
 
-    setMatrixUniforms();
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-}
-
-function loadIdentity() {
-    mvMatrix = Matrix.I(4);
-}
-
-function multMatrix(m) {
-    mvMatrix = mvMatrix.x(m);
-}
-
-function mvTranslate(v) {
-    multMatrix(Matrix.Translation($V([v[0], v[1], v[2]])).ensure4x4());
-}
-
-function setMatrixUniforms() {
-    var pUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
-    gl.uniformMatrix4fv(pUniform, false, new Float32Array(perspectiveMatrix.flatten()));
-
-    var mvUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
-    gl.uniformMatrix4fv(mvUniform, false, new Float32Array(mvMatrix.flatten()));
 }
