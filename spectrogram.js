@@ -4,9 +4,10 @@ var shaderProgram;
 
 var vertexPositionAttribute;
 var textureCoordAttribute;
+var samplerUniform;
 
-var squareVerticesBuffer;
-var squareVerticesTextureCoordBuffer;
+var vertexPositionBuffer;
+var textureCoordBuffer;
 
 var specTexture;
 
@@ -14,18 +15,16 @@ function start() {
     canvas = document.getElementById('spectrogram');
     gl = initWebGL(canvas);
 
-    if (gl) {
-        window.addEventListener("resize", resizeCanvas, false);
-        resizeCanvas();
-        gl.clearColor(0.0, 0.0, 0.0, 1.0);
-        gl.disable(gl.DEPTH_TEST);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        logInfo();
-        initShaders();
-        initBuffers();
-        initTextures();
-        setInterval(drawScene, 15);
-    }
+    window.addEventListener("resize", resizeCanvas, false);
+    resizeCanvas();
+    gl.clearColor(0.0, 0.0, 0.0, 1.0);
+    gl.disable(gl.DEPTH_TEST);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    logInfo();
+    initShaders();
+    initBuffers();
+    initTextures();
+    setInterval(drawScene, 15);
 }
 
 function resizeCanvas() {
@@ -77,12 +76,13 @@ function initShaders() {
 
     gl.useProgram(shaderProgram);
 
-
     vertexPositionAttribute = gl.getAttribLocation(shaderProgram, 'aVertexPosition');
     gl.enableVertexAttribArray(vertexPositionAttribute);
 
     textureCoordAttribute = gl.getAttribLocation(shaderProgram, 'aTextureCoord');
     gl.enableVertexAttribArray(textureCoordAttribute);
+
+    samplerUniform = gl.getUniformLocation(shaderProgram, 'uSampler');
 }
 
 function getShader(gl, id) {
@@ -126,8 +126,8 @@ function getShader(gl, id) {
 var horizAspect = 580.0/640.0;
 
 function initBuffers() {
-    squareVerticesBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, squareVerticesBuffer);
+    vertexPositionBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBuffer);
 
     var vertices = [
          1.0,  1.0,  0.0,
@@ -138,8 +138,8 @@ function initBuffers() {
 
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
-    squareVerticesTextureCoordBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, squareVerticesTextureCoordBuffer);
+    textureCoordBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
 
     var textureCoordinates = [
         1.0, 1.0,
@@ -173,15 +173,14 @@ function drawScene() {
 
     gl.clear(gl.COLOR_BUFFER_BIT);
 
-    gl.activeTexture(gl.TEXTURE0);
+    gl.activeTexture(gl.TEXTURE0); // add integers for other samplers
     gl.bindTexture(gl.TEXTURE_2D, specTexture);
-    var samplerUniform = gl.getUniformLocation(shaderProgram, 'uSampler');
     gl.uniform1i(samplerUniform, 0);
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, squareVerticesBuffer);
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBuffer);
     gl.vertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0);
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, squareVerticesTextureCoordBuffer);
+    gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
     gl.vertexAttribPointer(textureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
