@@ -1,13 +1,13 @@
 var canvas;
 var gl;
-var squareVerticesBuffer;
-var squareVerticesTextureCoordBuffer;
 var shaderProgram;
 
 var vertexPositionAttribute;
 var textureCoordAttribute;
 
-var specImage;
+var squareVerticesBuffer;
+var squareVerticesTextureCoordBuffer;
+
 var specTexture;
 
 function start() {
@@ -147,22 +147,10 @@ function initBuffers() {
 
 function initTextures() {
     specTexture = gl.createTexture();
-    specImage = new Image();
-    specImage.onload = function() { handleTextureLoaded(specImage, specTexture); }
-    specImage.src = "crate.jpg";
+    loadSpectrogram(new Float32Array(256), 16, 16);
 }
 
-function handleTextureLoaded(image, texture) {
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.bindTexture(gl.TEXTURE_2D, null);
-}
-
-function handleSpectrogramLoaded(spectrogram, nfreqs, nblocks) {
+function loadSpectrogram(spectrogram, nfreqs, nblocks) {
     gl.bindTexture(gl.TEXTURE_2D, specTexture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, nblocks, nfreqs, 0, gl.LUMINANCE, gl.FLOAT, spectrogram);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);

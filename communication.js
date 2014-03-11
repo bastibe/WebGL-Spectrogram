@@ -21,7 +21,7 @@ function send_status(status) {
 }
 
 ws.onopen = function() {
-    send_status("Hello, World!");
+    request_spectrogram('thistle_short.wav')
 };
 
 ws.onmessage = function(event) {
@@ -35,7 +35,7 @@ ws.onmessage = function(event) {
             return
         }
         var data = new Float32Array(event.data, header_len+4);
-        handleSpectrogramLoaded(data, header.extent[0], header.extent[1]);
+        loadSpectrogram(data, header.extent[0], header.extent[1]);
     } else {
         try {
             msg = JSON.parse(event.data)
@@ -50,5 +50,5 @@ ws.onmessage = function(event) {
 var container = document.getElementById('spectrogram');
 
 spectrogram.onclick = function(event) {
-    request_spectrogram('thistle_short.wav')
+
 };
