@@ -116,7 +116,6 @@ function getShader(gl, id) {
     gl.compileShader(shader);
 
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        console.log(shaderScript.type, theSource);
         alert("An error occurred compiling the shaders: " + gl.getShaderInfoLog(shader));
         return null;
     }
