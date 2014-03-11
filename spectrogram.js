@@ -131,8 +131,8 @@ function initBuffers() {
 
     var vertices = [
          1.0,  1.0,  0.0,
-        -1.0,  1.0,  0.0,
          1.0, -1.0,  0.0,
+        -1.0,  1.0,  0.0,
         -1.0, -1.0,  0.0
     ];
 
@@ -156,9 +156,9 @@ function initTextures() {
     loadSpectrogram(new Float32Array(256), 16, 16);
 }
 
-function loadSpectrogram(spectrogram, nfreqs, nblocks) {
+function loadSpectrogram(spectrogram, nblocks, nfreqs) {
     gl.bindTexture(gl.TEXTURE_2D, specTexture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, nblocks, nfreqs, 0, gl.LUMINANCE, gl.FLOAT, spectrogram);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, nfreqs, nblocks, 0, gl.LUMINANCE, gl.FLOAT, spectrogram);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);

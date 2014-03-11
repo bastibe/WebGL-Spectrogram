@@ -21,7 +21,7 @@ def spectrogram(filename, nfft=256, overlap=0.5):
     for idx in range(num_blocks):
         specs[:,idx] = np.abs(np.fft.rfft(sound[idx*shift:idx*shift+nfft], n=nfft))
     specs[:,-1] = np.abs(np.fft.rfft(sound[num_blocks*shift:], n=nfft))
-    return specs
+    return specs.T
 
 class EchoWebSocket(WebSocketHandler):
 
@@ -69,6 +69,7 @@ class EchoWebSocket(WebSocketHandler):
             message = json.loads(string)
         except ValueError:
             print('message {} is not a valid JSON object'.format(string))
+
         if message['type'] == 'status':
             print("Status Message:", message['content'])
         elif message['type'] == 'request_spectrogram':

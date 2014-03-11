@@ -21,7 +21,7 @@ function send_status(status) {
 }
 
 ws.onopen = function() {
-    request_spectrogram('thistle_short.wav')
+    request_spectrogram('thistle.wav', 1024);
 };
 
 ws.onmessage = function(event) {
@@ -34,8 +34,10 @@ ws.onmessage = function(event) {
             console.error("Could not parse header of binary message:", e.message)
             return
         }
-        var data = new Float32Array(event.data, header_len+4);
-        loadSpectrogram(data, header.extent[0], header.extent[1]);
+        event.data.byteOffset = header_len+4;
+        if (header.type === "spectrogram") {
+            spectrogram(header, event.data);
+        }
     } else {
         try {
             msg = JSON.parse(event.data)
@@ -47,8 +49,6 @@ ws.onmessage = function(event) {
     }
 };
 
-var container = document.getElementById('spectrogram');
-
-spectrogram.onclick = function(event) {
-
-};
+function spectrogram(header, data) {
+    loadSpectrogram(new Float32Array(data), header.extent[0], header.extent[1]);
+}
