@@ -11,8 +11,32 @@
 
       uniform sampler2D uSampler;
 
+      highp vec4 physicalColor(highp float amplitude) {
+          highp float fractional = mod(amplitude*8.0, 1.0);
+          highp float integer = floor(amplitude);
+          if (integer == 0.0) {
+              return vec4(amplitude, 0.0, 0.0, 1.0);
+          } else if (integer == 1.0) {
+              return vec4(1.0, amplitude, 0.0, 1.0);
+          } else if (integer == 2.0) {
+              return vec4(1.0-amplitude, 1.0, 0.0, 1.0);
+          } else if (integer == 3.0) {
+              return vec4(0.0, 1.0, amplitude, 1.0);
+          } else if (integer == 4.0) {
+              return vec4(0.0, 1.0-amplitude, 1.0, 1.0);
+          } else if (integer == 5.0) {
+              return vec4(amplitude, 0.0, 1.0, 1.0);
+          } else if (integer == 6.0) {
+              return vec4(1.0, 1.0-amplitude, 1.0, 1.0);
+          } else {
+              return vec4(1.0, 1.0, 1.0, 1.0);
+          }
+      }
+
       void main() {
-          gl_FragColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+          highp float amplitude = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t)).r;
+
+          gl_FragColor = physicalColor(amplitude);
       }
     </script>
     <script id="vertexShader" type="x-shader/x-vertex">
