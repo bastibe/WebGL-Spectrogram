@@ -15,16 +15,23 @@ function start() {
     gl = initWebGL(canvas);
 
     if (gl) {
+        window.addEventListener("resize", resizeCanvas, false);
+        resizeCanvas();
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.disable(gl.DEPTH_TEST);
         gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.viewport(0, 0, canvas.width, canvas.height);
         logInfo();
         initShaders();
         initBuffers();
         initTextures();
         setInterval(drawScene, 15);
     }
+}
+
+function resizeCanvas() {
+    canvas.width = canvas.clientWidth;
+    canvas.height = canvas.clientHeight;
+    gl.viewport(0, 0, canvas.width, canvas.height);
 }
 
 function logInfo() {
