@@ -34,9 +34,8 @@ ws.onmessage = function(event) {
             console.error("Could not parse header of binary message:", e.message)
             return
         }
-        event.data.byteOffset = header_len+4;
         if (header.type === "spectrogram") {
-            spectrogram(header, event.data);
+            spectrogram(header, new Float32Array(event.data, header_len+4));
         }
     } else {
         try {
@@ -50,5 +49,5 @@ ws.onmessage = function(event) {
 };
 
 function spectrogram(header, data) {
-    loadSpectrogram(new Float32Array(data), header.extent[0], header.extent[1]);
+    loadSpectrogram(data, header.extent[0], header.extent[1]);
 }
