@@ -35,7 +35,9 @@ ws.onmessage = function(event) {
             return
         }
         if (header.type === "spectrogram") {
-            spectrogram(header, new Float32Array(event.data, header_len+4));
+            loadSpectrogram(new Float32Array(event.data, header_len+4),
+                            header.extent[0], header.extent[1],
+                            header.fs, header.length);
         }
     } else {
         try {
@@ -47,7 +49,3 @@ ws.onmessage = function(event) {
         console.log(msg.type, msg.content);
     }
 };
-
-function spectrogram(header, data) {
-    loadSpectrogram(data, header.extent[0], header.extent[1], header.fs, header.length);
-}

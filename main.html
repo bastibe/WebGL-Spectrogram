@@ -2,10 +2,41 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Spectrogram</title>
-    <style>canvas { width: 100%; height: 100% }</style>
+    <style>
+      #specContainer {
+        position: relative;
+        width: 100%;
+        height: 100%;
+      }
+      #spectrogram {
+        position: absolute;
+        left: 10px;
+        top: 10px;
+        width: calc(100% - 50px);
+        height: calc(100% - 30px);
+      }
+      #specFreqScale {
+        position: absolute;
+        right: 0px;
+        top: 0px;
+        height: calc(100% - 10px);
+        width: 40px;
+      }
+      #specTimeScale {
+        position: absolute;
+        left: 0px;
+        bottom: 0px;
+        width: calc(100% - 30px);
+        height: 20px;
+      }
+    </style>
   </head>
   <body onload="start()">
+    <div id="specContainer">
     <canvas id="spectrogram"></canvas>
+    <canvas id="specFreqScale"></canvas>
+    <canvas id="specTimeScale"></canvas>
+    </div>
     <script id="fragmentShader" type="x-shader/x-fragment">
       varying highp vec2 vTextureCoord;
 

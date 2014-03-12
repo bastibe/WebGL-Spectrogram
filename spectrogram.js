@@ -1,4 +1,8 @@
-var canvas = document.getElementById('spectrogram');
+var spectrogram = document.getElementById('spectrogram');
+var specTimeScale = document.getElementById('specTimeScale');
+var specFreqScale = document.getElementById('specFreqScale');
+
+var margin = 10;
 
 var gl;
 var shaderProgram;
@@ -21,7 +25,7 @@ var specSize;
 var specViewSize;
 
 function start() {
-    gl = initWebGL(canvas);
+    gl = initWebGL(spectrogram);
 
     window.addEventListener("resize", resizeCanvas, false);
     resizeCanvas();
@@ -31,13 +35,17 @@ function start() {
     logInfo();
     initShaders();
     loadSpectrogram(new Float32Array(256), 16, 16);
-    setInterval(drawScene, 15);
+    setInterval(draw, 15);
 }
 
 function resizeCanvas() {
-    canvas.width = canvas.clientWidth;
-    canvas.height = canvas.clientHeight;
-    gl.viewport(0, 0, canvas.width, canvas.height);
+    spectrogram.width = spectrogram.clientWidth;
+    spectrogram.height = spectrogram.clientHeight;
+    gl.viewport(0, 0, spectrogram.width, spectrogram.height);
+    specTimeScale.width = specTimeScale.clientWidth;
+    specTimeScale.height = specTimeScale.clientHeight;
+    specFreqScale.width = specFreqScale.clientWidth;
+    specFreqScale.height = specFreqScale.clientHeight;
     dirty = true;
 }
 
@@ -49,10 +57,10 @@ function logInfo() {
     console.log('MaxTextureSize:', gl.getParameter(gl.MAX_TEXTURE_SIZE));
 }
 
-function initWebGL(canvas) {
+function initWebGL(spectrogram) {
     gl = null;
     try {
-        gl = canvas.getContext('webgl');
+        gl = spectrogram.getContext('webgl');
     } catch (e) {
         alert('Could not initialize WebGL');
         gl = null;
@@ -147,8 +155,6 @@ function loadSpectrogram(spectrogram, nblocks, nfreqs, fs, length) {
     vertexPositionBuffers = new Array(num_textures);
     spectrogramTextures = new Array(num_textures);
 
-    console.log("Cutting up spectrogram in "+num_textures+" textures.");
-
     textureCoordBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
     var textureCoordinates = [
@@ -201,11 +207,17 @@ function loadSpectrogram(spectrogram, nblocks, nfreqs, fs, length) {
     dirty = true;
 }
 
-function drawScene() {
+function draw() {
     if (document.hidden || !dirty) {
         return
     }
+    drawSpectrogram();
+    drawSpecTimeScale();
+    drawSpecFreqScale();
+    dirty = false;
+}
 
+function drawSpectrogram() {
     gl.clear(gl.COLOR_BUFFER_BIT);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
@@ -234,12 +246,75 @@ function drawScene() {
 
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     }
-    dirty = false;
 }
 
-var zoom = 1.0;
+function formatTime(seconds) {
+    var minutes = Math.floor(seconds/60);
+    var seconds = seconds % 60;
+    minutes = minutes.toString();
+    if (minutes.length === 1) {
+        minutes = "0" + minutes;
+    }
+    seconds = seconds.toFixed(2);
+    if (seconds.length === 4) {
+        seconds = "0" + seconds;
+    }
+    return minutes + ":" + seconds;
+}
 
-canvas.onwheel = function(wheel) {
+function drawSpecTimeScale() {
+    var ctx = specTimeScale.getContext('2d');
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    // draw axis line and two ticks
+    ctx.fillStyle = "black";
+    ctx.fillRect(10, 2, ctx.canvas.width-20, 1);
+    ctx.fillRect(10, 2, 1, 5);
+    ctx.fillRect(ctx.canvas.width-10, 3, 1, 5);
+    // draw lower time bound
+    ctx.font = "8px sans-serif";
+    var text = formatTime(specViewSize.minT);
+    var textWidth = ctx.measureText(text).width;
+    ctx.fillText(text, 0, ctx.canvas.height-2);
+    // draw upper time bound
+    var text = formatTime(specViewSize.maxT);
+    var textWidth = ctx.measureText(text).width;
+    ctx.fillText(text, ctx.canvas.width-textWidth, ctx.canvas.height-2);
+}
+
+function formatFreq(freq) {
+    if (freq < 10) {
+        return freq.toFixed(2) + " Hz";
+    } else if (freq < 100) {
+        return freq.toFixed(1) + " Hz";
+    } else if (freq < 1000) {
+        return Math.round(freq).toString() + " Hz";
+    } else if (freq < 10000) {
+        return Math.round(freq/1000).toFixed(2) + " kHz";
+    } else {
+        return Math.round(freq/1000).toFixed(1) + " kHz";
+    }
+}
+
+function drawSpecFreqScale() {
+    var ctx = specFreqScale.getContext('2d');
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    // draw axis line and two ticks
+    ctx.fillStyle = "black";
+    ctx.fillRect(2, 10, 1, ctx.canvas.height-20);
+    ctx.fillRect(2, 10, 5, 1);
+    ctx.fillRect(2, ctx.canvas.height-10, 5, 1);
+    // draw upper frequency bound
+    ctx.font = "8px sans-serif";
+    var text = formatFreq(specViewSize.maxF);
+    var textWidth = ctx.measureText(text).width;
+    ctx.fillText(text, 8, 14);
+    // draw lower frequency bound
+    var text = formatFreq(specViewSize.minF);
+    var textWidth = ctx.measureText(text).width;
+    ctx.fillText(text, 8, ctx.canvas.height-8);
+}
+
+spectrogram.onwheel = function(wheel) {
     var stepF = (specViewSize.maxF - specViewSize.minF)/100;
     var stepT = (specViewSize.maxT - specViewSize.minT)/100;
     if (wheel.altKey) {
@@ -260,11 +335,10 @@ canvas.onwheel = function(wheel) {
         specViewSize.minT -= wheel.deltaX * stepT/10;
         specViewSize.maxT -= wheel.deltaX * stepT/10;
     }
-    console.log(specViewSize.minF, specViewSize.maxF, specViewSize.minT, specViewSize.maxT)
     wheel.preventDefault();
     dirty = true;
 }
 
-canvas.onclick = function() {
+spectrogram.onclick = function() {
     console.log("click")
 }
