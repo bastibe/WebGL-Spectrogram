@@ -7,6 +7,7 @@ var vertexPositionAttribute;
 var textureCoordAttribute;
 
 var samplerUniform;
+var ampRangeUniform;
 var zoomUniform;
 
 var vertexPositionBuffers;
@@ -15,9 +16,9 @@ var textureCoordBuffer;
 var spectrogramTextures;
 
 var dirty = false;
-var zoom = 1.0;
-var pan_x = 0.0;
-var pan_y = 0.0;
+
+var specSize;
+var specViewSize;
 
 function start() {
     gl = initWebGL(canvas);
@@ -91,6 +92,7 @@ function initShaders() {
 
     samplerUniform = gl.getUniformLocation(shaderProgram, 'uSampler');
     zoomUniform = gl.getUniformLocation(shaderProgram, 'mZoom');
+    ampRangeUniform = gl.getUniformLocation(shaderProgram, 'vAmpRange');
 }
 
 function getShader(gl, id) {
@@ -131,7 +133,7 @@ function getShader(gl, id) {
     return shader;
 }
 
-function loadSpectrogram(spectrogram, nblocks, nfreqs) {
+function loadSpectrogram(spectrogram, nblocks, nfreqs, fs, length) {
     for (var i in spectrogramTextures) {
         gl.deleteBuffer(vertexPositionBuffers[i]);
         gl.deleteTexture(spectrogramTextures[i]);
@@ -177,10 +179,25 @@ function loadSpectrogram(spectrogram, nblocks, nfreqs) {
         gl.bindTexture(gl.TEXTURE_2D, spectrogramTextures[i]);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, nfreqs, blocks, 0, gl.LUMINANCE, gl.FLOAT, data);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     }
+
+    specSize = {
+        minT: 0,
+        maxT: length,
+        minF: 0,
+        maxF: fs/2
+    };
+    specViewSize = {
+        minT: 0,
+        maxT: length,
+        minF: 0,
+        maxF: fs/2,
+        minA: -120,
+        maxA: 0
+    };
     dirty = true;
 }
 
@@ -194,12 +211,18 @@ function drawScene() {
     gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
     gl.vertexAttribPointer(textureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
 
+    var panX = (specViewSize.minT - specSize.minT) / (specSize.maxT - specSize.minT);
+    var panY = (specViewSize.minF - specSize.minF) / (specSize.maxF - specSize.minF);
+    var zoomX = (specViewSize.maxT - specViewSize.minT) / (specSize.maxT - specSize.minT);
+    var zoomY = (specViewSize.maxF - specViewSize.minF) / (specSize.maxF - specSize.minF);
     var zoomMatrix = [
-        zoom, 0.0,  pan_x,
-        0.0,  zoom, -pan_y,
+        1/zoomX, 0.0,  -panX,
+        0.0,  1/zoomY, -panY,
         0.0,  0.0,  1.0
     ];
     gl.uniformMatrix3fv(zoomUniform, gl.FALSE, zoomMatrix);
+
+    gl.uniform2f(ampRangeUniform, specViewSize.minA, specViewSize.maxA);
 
     for (var i=0; i<spectrogramTextures.length; i++) {
         gl.activeTexture(gl.TEXTURE0+i);
@@ -217,15 +240,29 @@ function drawScene() {
 var zoom = 1.0;
 
 canvas.onwheel = function(wheel) {
-    if (wheel.shiftKey) {
-        zoom *= Math.pow(0.99, wheel.deltaY);
-        zoom = Math.max(1.0, zoom);
-        dirty = true;
+    var stepF = (specViewSize.maxF - specViewSize.minF)/100;
+    var stepT = (specViewSize.maxT - specViewSize.minT)/100;
+    if (wheel.altKey) {
+        var center = (specViewSize.minA + specViewSize.maxA) / 2;
+        var range  = (specViewSize.maxA - specViewSize.minA) / 2;
+        range += wheel.deltaX/10;
+        center += wheel.deltaY/10;
+        specViewSize.minA = center-range;
+        specViewSize.maxA = center+range;
+    } else if (wheel.ctrlKey) {
+        specViewSize.minF -= wheel.deltaY * stepF;
+        specViewSize.maxF += wheel.deltaY * stepF;
+        specViewSize.minT -= wheel.deltaY * stepT;
+        specViewSize.maxT += wheel.deltaY * stepT;
     } else {
-        pan_y += 0.001 * wheel.deltaY;
-        pan_x += 0.001 * wheel.deltaX;
-        dirty = true;
+        specViewSize.minF += wheel.deltaY * stepF/10;
+        specViewSize.maxF += wheel.deltaY * stepF/10;
+        specViewSize.minT -= wheel.deltaX * stepT/10;
+        specViewSize.maxT -= wheel.deltaX * stepT/10;
     }
+    console.log(specViewSize.minF, specViewSize.maxF, specViewSize.minT, specViewSize.maxT)
+    wheel.preventDefault();
+    dirty = true;
 }
 
 canvas.onclick = function() {

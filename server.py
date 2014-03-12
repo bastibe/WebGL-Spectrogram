@@ -1,5 +1,6 @@
 from tornado.websocket import WebSocketHandler
 import numpy as np
+from scipy.signal import hann
 import json
 from pysoundfile import SoundFile
 import matplotlib.pyplot as plt
@@ -14,14 +15,16 @@ def spectrogram(filename, nfft=256, overlap=0.5):
     and save the absolute spectrum.
 
     """
-    sound = SoundFile(filename)[:].sum(axis=1)
+    file = SoundFile(filename)
+    sound = file[:].sum(axis=1)
     shift = round(nfft*overlap)
     num_blocks = (len(sound)-nfft)//shift+1
     specs = np.zeros((nfft/2+1, num_blocks), dtype=np.float32)
+    window = hann(nfft)
     for idx in range(num_blocks):
-        specs[:,idx] = np.abs(np.fft.rfft(sound[idx*shift:idx*shift+nfft], n=nfft))
-    specs[:,-1] = np.abs(np.fft.rfft(sound[num_blocks*shift:], n=nfft))
-    return specs.T
+        specs[:,idx] = np.abs(np.fft.rfft(sound[idx*shift:idx*shift+nfft]*window, n=nfft))/nfft
+    specs[:,-1] = np.abs(np.fft.rfft(sound[num_blocks*shift:], n=nfft))/nfft
+    return specs.T, file.sample_rate, len(file)/file.sample_rate
 
 class EchoWebSocket(WebSocketHandler):
 
@@ -74,9 +77,11 @@ class EchoWebSocket(WebSocketHandler):
             print("Status Message:", message['content'])
         elif message['type'] == 'request_spectrogram':
             print('sending spectrogram')
-            data = spectrogram(**message['content'])
+            data, fs, length = spectrogram(**message['content'])
             self.send_binary_message({ 'type': 'spectrogram',
-                                       'extent': data.shape }, data)
+                                       'extent': data.shape,
+                                       'fs': fs,
+                                       'length': length }, data)
 
     def on_close(self):
         print("WebSocket closed")

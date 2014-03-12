@@ -10,33 +10,37 @@
       varying highp vec2 vTextureCoord;
 
       uniform sampler2D uSampler;
+      uniform highp vec2 vAmpRange;
 
-      highp vec4 physicalColor(highp float amplitude) {
+      highp vec3 physicalColor(highp float amplitude) {
           highp float fractional = mod(amplitude*8.0, 1.0);
-          highp float integer = floor(amplitude);
+          highp float integer = floor(amplitude*8.0);
           if (integer == 0.0) {
-              return vec4(amplitude, 0.0, 0.0, 1.0);
+              return vec3(fractional, 0.0, 0.0);
           } else if (integer == 1.0) {
-              return vec4(1.0, amplitude, 0.0, 1.0);
+              return vec3(1.0, fractional, 0.0);
           } else if (integer == 2.0) {
-              return vec4(1.0-amplitude, 1.0, 0.0, 1.0);
+              return vec3(1.0-fractional, 1.0, 0.0);
           } else if (integer == 3.0) {
-              return vec4(0.0, 1.0, amplitude, 1.0);
+              return vec3(0.0, 1.0, fractional);
           } else if (integer == 4.0) {
-              return vec4(0.0, 1.0-amplitude, 1.0, 1.0);
+              return vec3(0.0, 1.0-fractional, 1.0);
           } else if (integer == 5.0) {
-              return vec4(amplitude, 0.0, 1.0, 1.0);
+              return vec3(fractional, 0.0, 1.0);
           } else if (integer == 6.0) {
-              return vec4(1.0, 1.0-amplitude, 1.0, 1.0);
+              return vec3(1.0, 1.0-fractional, 1.0);
           } else {
-              return vec4(1.0, 1.0, 1.0, 1.0);
+              return vec3(1.0, 1.0, 1.0);
           }
       }
 
       void main() {
           highp float amplitude = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t)).r;
-
-          gl_FragColor = physicalColor(amplitude);
+          amplitude = 20.0*log(amplitude)/log(10.0);
+          amplitude = max(amplitude, vAmpRange[0]);
+          amplitude = min(amplitude, vAmpRange[1]);
+          amplitude = (amplitude - vAmpRange[0]) / (vAmpRange[1] - vAmpRange[0]);
+          gl_FragColor = vec4(physicalColor(amplitude), 1.0);
       }
     </script>
     <script id="vertexShader" type="x-shader/x-vertex">

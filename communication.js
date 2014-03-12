@@ -49,5 +49,5 @@ ws.onmessage = function(event) {
 };
 
 function spectrogram(header, data) {
-    loadSpectrogram(data, header.extent[0], header.extent[1]);
+    loadSpectrogram(data, header.extent[0], header.extent[1], header.fs, header.length);
 }
