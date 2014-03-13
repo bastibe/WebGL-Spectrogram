@@ -20,8 +20,6 @@ var textureCoordBuffer;
 
 var spectrogramTextures;
 
-var dirty = false;
-
 var specSize;
 var specViewSize;
 
@@ -36,7 +34,7 @@ function start() {
     logInfo();
     initShaders();
     loadSpectrogram(new Float32Array(256), 16, 16);
-    setInterval(draw, 15);
+    window.requestAnimationFrame(drawScene);
 }
 
 function resizeCanvas() {
@@ -47,7 +45,7 @@ function resizeCanvas() {
     specTimeScale.height = specTimeScale.clientHeight;
     specFreqScale.width = specFreqScale.clientWidth;
     specFreqScale.height = specFreqScale.clientHeight;
-    dirty = true;
+    window.requestAnimationFrame(drawScene);
 }
 
 function logInfo() {
@@ -193,17 +191,16 @@ function loadSpectrogram(spectrogram, nblocks, nfreqs, fs, length) {
 
     specSize = new SpecSize(0, length, 0, fs/2);
     specViewSize = new SpecSize(0, length, 0, fs/2, -120, 0);
-    dirty = true;
+    window.requestAnimationFrame(drawScene);
 }
 
-function draw() {
-    if (document.hidden || !dirty) {
+function drawScene() {
+    if (document.hidden) {
         return
     }
     drawSpectrogram();
     drawSpecTimeScale();
     drawSpecFreqScale();
-    dirty = false;
 }
 
 function drawSpectrogram() {
@@ -362,8 +359,8 @@ spectrogram.onwheel = function(wheel) {
         specViewSize.maxT += deltaT;
     }
     wheel.preventDefault();
-    dirty = true;
     spectrogram.onmousemove(wheel);
+    window.requestAnimationFrame(drawScene);
 }
 
 spectrogram.onmousemove = function(mouse) {
