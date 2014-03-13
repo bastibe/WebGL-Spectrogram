@@ -303,25 +303,63 @@ function drawSpecFreqScale() {
 }
 
 spectrogram.onwheel = function(wheel) {
-    var stepF = (specViewSize.maxF - specViewSize.minF)/100;
-    var stepT = (specViewSize.maxT - specViewSize.minT)/100;
+    var stepF = specViewSize.widthF() / 100;
+    var stepT = specViewSize.widthT() / 100;
     if (wheel.altKey) {
-        var center = (specViewSize.minA + specViewSize.maxA) / 2;
-        var range  = (specViewSize.maxA - specViewSize.minA) / 2;
+        var center = specViewSize.centerA();
+        var range  = specViewSize.widthA();
         range += wheel.deltaX/10;
         center += wheel.deltaY/10;
-        specViewSize.minA = center-range;
-        specViewSize.maxA = center+range;
+        specViewSize.minA = center-range/2;
+        specViewSize.maxA = center+range/2;
     } else if (wheel.ctrlKey) {
-        specViewSize.minF -= wheel.deltaY * stepF;
-        specViewSize.maxF += wheel.deltaY * stepF;
-        specViewSize.minT -= wheel.deltaY * stepT;
-        specViewSize.maxT += wheel.deltaY * stepT;
+        var deltaT = wheel.deltaY * stepT;
+        if (specViewSize.widthT() + 2*deltaT > specSize.widthT()) {
+            deltaT = (specSize.widthT() - specViewSize.widthT()) / 2;
+        }
+        var deltaF = wheel.shiftKey ? 0 : wheel.deltaY * stepF;
+        if (specViewSize.widthF() + 2*deltaF > specSize.widthF()) {
+            deltaF = (specSize.widthF() - specViewSize.widthF()) / 2;
+        }
+        specViewSize.minF -= deltaF;
+        specViewSize.maxF += deltaF;
+        specViewSize.minT -= deltaT;
+        specViewSize.maxT += deltaT;
+        if (specViewSize.minT < specSize.minT) {
+            specViewSize.maxT += specSize.minT - specViewSize.minT;
+            specViewSize.minT += specSize.minT - specViewSize.minT;
+        }
+        if (specViewSize.maxT > specSize.maxT) {
+            specViewSize.minT += specSize.maxT - specViewSize.maxT;
+            specViewSize.maxT += specSize.maxT - specViewSize.maxT;
+        }
+        if (specViewSize.minF < specSize.minF) {
+            specViewSize.maxF += specSize.minF - specViewSize.minF;
+            specViewSize.minF += specSize.minF - specViewSize.minF;
+        }
+        if (specViewSize.maxF > specSize.maxF) {
+            specViewSize.minF += specSize.maxF - specViewSize.maxF;
+            specViewSize.maxF += specSize.maxF - specViewSize.maxF;
+        }
     } else {
-        specViewSize.minF += wheel.deltaY * stepF/10;
-        specViewSize.maxF += wheel.deltaY * stepF/10;
-        specViewSize.minT -= wheel.deltaX * stepT/10;
-        specViewSize.maxT -= wheel.deltaX * stepT/10;
+        var deltaT = wheel.deltaX * stepT/10;
+        if (specViewSize.maxT + deltaT > specSize.maxT) {
+            deltaT = specSize.maxT - specViewSize.maxT;
+        }
+        if (specViewSize.minT + deltaT < specSize.minT) {
+            deltaT = specSize.minT - specViewSize.minT;
+        }
+        var deltaF = -wheel.deltaY * stepF/10;
+        if (specViewSize.maxF + deltaF > specSize.maxF) {
+            deltaF = specSize.maxF - specViewSize.maxF;
+        }
+        if (specViewSize.minF + deltaF < specSize.minF) {
+            deltaF = specSize.minF - specViewSize.minF;
+        }
+        specViewSize.minF += deltaF;
+        specViewSize.maxF += deltaF;
+        specViewSize.minT += deltaT;
+        specViewSize.maxT += deltaT;
     }
     wheel.preventDefault();
     dirty = true;
