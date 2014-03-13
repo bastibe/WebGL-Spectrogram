@@ -5,6 +5,7 @@ ws.onopen = reloadSpectrogram;
 
 var audioFile = document.getElementById('audioFile').files[0];
 var fftLen = parseFloat(document.getElementById('fftLen').value);
+var progressBar = document.getElementById('progressBar');
 
 function send_msg(type, content) {
     ws.send(JSON.stringify({
@@ -65,15 +66,15 @@ ws.onmessage = function(event) {
         var header_len = new Int32Array(event.data, 0, 1)[0];
         var header = String.fromCharCode.apply(null, new Uint8Array(event.data, 4, header_len));
         try {
-            header = JSON.parse(header)
+            msg = JSON.parse(header)
         } catch(e) {
             console.error("Could not parse header of binary message:", e.message)
             return
         }
-        if (header.type === "spectrogram") {
+        if (msg.type === "spectrogram") {
             loadSpectrogram(new Float32Array(event.data, header_len+4),
-                            header.extent[0], header.extent[1],
-                            header.fs, header.length);
+                            msg.content.extent[0], msg.content.extent[1],
+                            msg.content.fs, msg.content.length);
         }
     } else {
         try {
@@ -82,7 +83,16 @@ ws.onmessage = function(event) {
             console.error("Could not parse message:", e.message)
             return
         }
-        console.log(msg.type, msg.content);
+        if (msg.type === "loading_progress") {
+            if (msg.content.progress === 0 || msg.content.progress === 1) {
+                progressBar.hidden = true;
+            } else {
+                progressBar.hidden = false;
+                progressBar.value = msg.content.progress;
+            }
+        } else {
+            console.log(msg.type, msg.content);
+        }
     }
 }
 

@@ -40,6 +40,12 @@
         opacity: 0.5;
         font: 10px sans-serif;
       }
+      #progressBar {
+        position: absolute;
+        margin-left: calc(50% - 100px);
+        margin-top: 50%;
+        width: 200px;
+      }
     </style>
   </head>
   <body onload="start()">
@@ -61,6 +67,7 @@
     <div id="specContainer">
     <canvas id="spectrogram"></canvas>
     <div id="specDataView">NaN</div>
+    <progress id="progressBar" hidden="True"></progress>
     <canvas id="specFreqScale"></canvas>
     <canvas id="specTimeScale"></canvas>
     </div>

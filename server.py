@@ -7,36 +7,6 @@ import matplotlib.pyplot as plt
 import sys
 import io
 
-def data_spectrogram(data, nfft=256, overlap=0.5):
-    file = SoundFile(io.BytesIO(data), virtual_io=True)
-    data = file[:].sum(axis=1)
-    return spectrogram(data, file.sample_rate, nfft, overlap)
-
-def file_spectrogram(filename, nfft=256, overlap=0.5):
-    """Calculate a real spectrogram from an audio file
-
-    An audio file will be loaded and cut up into overlapping blocks of
-    length `nfft`. The amount of overlap will be `overlap*nfft`. Then,
-    calculate a real fourier transform of length `nfft` of every block
-    and save the absolute spectrum.
-
-    """
-    file = SoundFile(filename)
-    data = file[:].sum(axis=1)
-    return spectrogram(data, file.sample_rate, nfft, overlap)
-
-
-def spectrogram(data, sample_rate, nfft, overlap):
-    shift = round(nfft*overlap)
-    num_blocks = (len(data)-nfft)//shift+1
-    specs = np.zeros((nfft/2+1, num_blocks), dtype=np.float32)
-    window = hann(nfft)
-    for idx in range(num_blocks):
-        specs[:,idx] = np.abs(np.fft.rfft(data[idx*shift:idx*shift+nfft]*window, n=nfft))/nfft
-    specs[:,-1] = np.abs(np.fft.rfft(data[num_blocks*shift:], n=nfft))/nfft
-    return specs.T, sample_rate, len(data)/sample_rate
-
-
 class EchoWebSocket(WebSocketHandler):
 
     def open(self):
@@ -92,22 +62,58 @@ class EchoWebSocket(WebSocketHandler):
         if header['type'] == 'status':
             print("Status Message:", header['content'])
         elif header['type'] == 'request_file_spectrogram':
-            data, fs, length = file_spectrogram(**header['content'])
+            data, fs, length = self.file_spectrogram(**header['content'])
             self.send_binary_message({ 'type': 'spectrogram',
-                                       'extent': data.shape,
-                                       'fs': fs,
-                                       'length': length }, data)
+                                       'content': {
+                                           'extent': data.shape,
+                                           'fs': fs,
+                                           'length': length
+                                       }}, data)
         elif header['type'] == 'request_data_spectrogram':
-            data, fs, length = data_spectrogram(payload, **header['content'])
+            data, fs, length = self.data_spectrogram(payload, **header['content'])
             self.send_binary_message({ 'type': 'spectrogram',
-                                       'extent': data.shape,
-                                       'fs': fs,
-                                       'length': length }, data)
+                                       'content': {
+                                           'extent': data.shape,
+                                           'fs': fs,
+                                           'length': length
+                                       }}, data)
         else:
             print("Don't know what to do with message of type {}".format(header['type']))
 
     def on_close(self):
         print("WebSocket closed")
+
+    def data_spectrogram(self, data, nfft=256, overlap=0.5):
+        file = SoundFile(io.BytesIO(data), virtual_io=True)
+        data = file[:].sum(axis=1)
+        return self.spectrogram(data, file.sample_rate, nfft, overlap)
+
+    def file_spectrogram(self, filename, nfft=256, overlap=0.5):
+        file = SoundFile(filename)
+        data = file[:].sum(axis=1)
+        return self.spectrogram(data, file.sample_rate, nfft, overlap)
+
+    def spectrogram(self, data, sample_rate, nfft, overlap):
+        """Calculate a real spectrogram from audio data
+
+        An audio data will be cut up into overlapping blocks of length
+        `nfft`. The amount of overlap will be `overlap*nfft`. Then,
+        calculate a real fourier transform of length `nfft` of every
+        block and save the absolute spectrum.
+
+        """
+
+        shift = round(nfft*overlap)
+        num_blocks = (len(data)-nfft)//shift+1
+        specs = np.zeros((nfft/2+1, num_blocks), dtype=np.float32)
+        window = hann(nfft)
+        for idx in range(num_blocks):
+            specs[:,idx] = np.abs(np.fft.rfft(data[idx*shift:idx*shift+nfft]*window, n=nfft))/nfft
+            if idx % 10 == 0:
+                self.send_message("loading_progress", {"progress": idx/num_blocks})
+        specs[:,-1] = np.abs(np.fft.rfft(data[num_blocks*shift:], n=nfft))/nfft
+        self.send_message("loading_progress", {"progress": 1})
+        return specs.T, sample_rate, len(data)/sample_rate
 
 
 if __name__ == "__main__":
