@@ -368,7 +368,3 @@ spectrogram.onmousemove = function(mouse) {
     var f = specViewSize.scaleF(1-mouse.layerY/spectrogram.clientHeight);
     specDataView.innerHTML = formatTime(t) + ", " + formatFreq(f);
 }
-
-spectrogram.onclick = function() {
-    console.log("click")
-}

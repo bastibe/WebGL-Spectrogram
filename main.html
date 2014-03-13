@@ -4,9 +4,9 @@
     <title>Spectrogram</title>
     <style>
       #specContainer {
-        position: relative;
+        position: absolute;
         width: 100%;
-        height: 100%;
+        height: calc(100% - 100px);
       }
       #spectrogram {
         position: absolute;
@@ -43,6 +43,21 @@
     </style>
   </head>
   <body onload="start()">
+    <div id="metadata">
+      <form>
+        <label for="audioFile">File:</label>
+        <input id="audioFile" name="audioFile" type="file" accept="audio/*" onchange="selectAudioFile(this.files)">
+        <label for="fftLen">NFFT:</label>
+        <select id="fftLen" name="fftLen" onchange="selectFFTLen(this.value)">
+          <option>128</option>
+          <option>256</option>
+          <option>512</option>
+          <option selected="selected">1024</option>
+          <option>2048</option>
+          <option>4096</option>
+        </select>
+      </form>
+    </div>
     <div id="specContainer">
     <canvas id="spectrogram"></canvas>
     <div id="specDataView">NaN</div>
