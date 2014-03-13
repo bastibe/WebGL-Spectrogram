@@ -190,20 +190,8 @@ function loadSpectrogram(spectrogram, nblocks, nfreqs, fs, length) {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     }
 
-    specSize = {
-        minT: 0,
-        maxT: length,
-        minF: 0,
-        maxF: fs/2
-    };
-    specViewSize = {
-        minT: 0,
-        maxT: length,
-        minF: 0,
-        maxF: fs/2,
-        minA: -120,
-        maxA: 0
-    };
+    specSize = new SpecSize(0, length, 0, fs/2);
+    specViewSize = new SpecSize(0, length, 0, fs/2, -120, 0);
     dirty = true;
 }
 
@@ -222,15 +210,14 @@ function drawSpectrogram() {
 
     gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
     gl.vertexAttribPointer(textureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
-
-    var panX = (specViewSize.minT - specSize.minT) / (specSize.maxT - specSize.minT);
-    var panY = (specViewSize.minF - specSize.minF) / (specSize.maxF - specSize.minF);
-    var zoomX = (specViewSize.maxT - specViewSize.minT) / (specSize.maxT - specSize.minT);
-    var zoomY = (specViewSize.maxF - specViewSize.minF) / (specSize.maxF - specSize.minF);
+    var panX = (specViewSize.centerT() - specSize.centerT()) / specSize.widthT();
+    var panY = (specViewSize.centerF() - specSize.centerF()) / specSize.widthF();
+    var zoomX = specSize.widthT() / specViewSize.widthT();
+    var zoomY = specSize.widthF() / specViewSize.widthF();
     var zoomMatrix = [
-        1/zoomX, 0.0,  -panX,
-        0.0,  1/zoomY, -panY,
-        0.0,  0.0,  1.0
+        zoomX, 0.0,   -2*panX*zoomX,
+        0.0,   zoomY, -2*panY*zoomY,
+        0.0,   0.0,    1.0
     ];
     gl.uniformMatrix3fv(zoomUniform, gl.FALSE, zoomMatrix);
 
