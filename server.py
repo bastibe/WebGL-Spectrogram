@@ -25,7 +25,7 @@ class EchoWebSocket(WebSocketHandler):
         self.write_message(json.dumps({ "type": type_,
                                         "content": content }).encode())
 
-    def send_binary_message(self, metadata, data):
+    def send_binary_message(self, type_, content, data):
         """Send a binary message that consists of three parts:
 
         - the length of the header as a 32 bit signed integer
@@ -38,7 +38,7 @@ class EchoWebSocket(WebSocketHandler):
 
         """
 
-        header = json.dumps(metadata).encode()
+        header = json.dumps({'type':type_, 'content':content}).encode()
         # append enough spaces so that the payload starts at an 8-byte
         # aligned position. The first four bytes will be the length of
         # the header, encoded as a 32 bit signed integer:
@@ -63,20 +63,18 @@ class EchoWebSocket(WebSocketHandler):
             print("Status Message:", header['content'])
         elif header['type'] == 'request_file_spectrogram':
             data, fs, length = self.file_spectrogram(**header['content'])
-            self.send_binary_message({ 'type': 'spectrogram',
-                                       'content': {
-                                           'extent': data.shape,
-                                           'fs': fs,
-                                           'length': length
-                                       }}, data)
+            self.send_binary_message('spectrogram',
+                                     {'extent': data.shape,
+                                      'fs': fs,
+                                      'length': length},
+                                     data)
         elif header['type'] == 'request_data_spectrogram':
             data, fs, length = self.data_spectrogram(payload, **header['content'])
-            self.send_binary_message({ 'type': 'spectrogram',
-                                       'content': {
-                                           'extent': data.shape,
-                                           'fs': fs,
-                                           'length': length
-                                       }}, data)
+            self.send_binary_message('spectrogram',
+                                     {'extent': data.shape,
+                                      'fs': fs,
+                                      'length': length},
+                                     data)
         else:
             print("Don't know what to do with message of type {}".format(header['type']))
 
