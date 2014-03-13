@@ -1,6 +1,7 @@
 var spectrogram = document.getElementById('spectrogram');
 var specTimeScale = document.getElementById('specTimeScale');
 var specFreqScale = document.getElementById('specFreqScale');
+var specDataView = document.getElementById('specDataView');
 
 var margin = 10;
 
@@ -276,9 +277,9 @@ function formatFreq(freq) {
     } else if (freq < 1000) {
         return Math.round(freq).toString() + " Hz";
     } else if (freq < 10000) {
-        return Math.round(freq/1000).toFixed(2) + " kHz";
+        return (freq/1000).toFixed(2) + " kHz";
     } else {
-        return Math.round(freq/1000).toFixed(1) + " kHz";
+        return (freq/1000).toFixed(1) + " kHz";
     }
 }
 
@@ -324,6 +325,13 @@ spectrogram.onwheel = function(wheel) {
     }
     wheel.preventDefault();
     dirty = true;
+    spectrogram.onmousemove(wheel);
+}
+
+spectrogram.onmousemove = function(mouse) {
+    var t = specViewSize.scaleT(mouse.layerX/spectrogram.clientWidth);
+    var f = specViewSize.scaleF(1-mouse.layerY/spectrogram.clientHeight);
+    specDataView.innerHTML = formatTime(t) + ", " + formatFreq(f);
 }
 
 spectrogram.onclick = function() {

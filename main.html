@@ -29,11 +29,23 @@
         width: calc(100% - 30px);
         height: 20px;
       }
+      #specDataView {
+        position: absolute;
+        background: #ffffff;
+        z-index: 9999;
+        margin: 13px;
+        padding: 2px;
+        border-radius: 3px;
+        border: 1px #000000 solid;
+        opacity: 0.5;
+        font: 10px sans-serif;
+      }
     </style>
   </head>
   <body onload="start()">
     <div id="specContainer">
     <canvas id="spectrogram"></canvas>
+    <div id="specDataView">NaN</div>
     <canvas id="specFreqScale"></canvas>
     <canvas id="specTimeScale"></canvas>
     </div>
