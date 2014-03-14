@@ -1,49 +1,62 @@
 var ws = new WebSocket("ws://localhost:8888/spectrogram");
 ws.binaryType = 'arraybuffer';
 
-ws.onopen = reloadSpectrogram;
+function send_message(type, content, payload) {
+    /* Send a message.
 
-var audioFile = document.getElementById('audioFile').files[0];
-var fftLen = parseFloat(document.getElementById('fftLen').value);
-var progressBar = document.getElementById('progressBar');
+       Arguments:
+       msg_type  the message type as string.
+       content   the message content as json-serializable data.
+       payload   binary data as ArrayBuffer.
+    */
 
-function send_msg(type, content) {
-    ws.send(JSON.stringify({
-        type: type,
-        content: content
-    }));
-}
+    if (payload === null) {
+        ws.send(JSON.stringify({
+            type: type,
+            content: content
+        }));
+    } else {
+        var header_string = JSON.stringify({
+            type: type,
+            content: content
+        });
+        // append enough spaces so that the payload starts at an 8-byte
+        // aligned position. The first four bytes will be the length of
+        // the header, encoded as a 32 bit signed integer:
+        var alignment_bytes = 8-((header_string.length+4)%8);
+        for (var i=0; i<alignment_bytes; i++) {
+            header_string += " ";
+        }
 
-function send_binary_msg(type, content, payload) {
-    var header = {
-        type: type,
-        content: content
-    };
+        var message = new ArrayBuffer(4 + header_string.length + payload.byteLength);
 
-    var header_string = JSON.stringify(header);
-    var alignment_bytes = 8-((header_string.length+4)%8);
-    for (var i=0; i<alignment_bytes; i++) {
-        header_string += " ";
+        // write the length of the header as a binary 32 bit signed integer:
+        var prefix_data = new Int32Array(message, 0, 4);
+        prefix_data[0] = header_string.length;
+
+        // write the header data
+        var header_data = new Uint8Array(message, 4, header_string.length)
+        for (var i=0; i<header_string.length; i++) {
+            header_data[i] = header_string.charCodeAt(i);
+        }
+
+        // write the payload data
+        payload_data = new Uint8Array(message, 4+header_string.length, payload.byteLength);
+        payload_data.set(new Uint8Array(payload));
+        ws.send(message);
     }
-
-    var message = new ArrayBuffer(4 + header_string.length + payload.byteLength);
-
-    var prefix_data = new Int32Array(message, 0, 4);
-    prefix_data[0] = header_string.length;
-
-    var header_data = new Uint8Array(message, 4, header_string.length)
-    for (var i=0; i<header_string.length; i++) {
-        header_data[i] = header_string.charCodeAt(i);
-    }
-
-    payload_data = new Uint8Array(message, 4+header_string.length, payload.byteLength);
-    payload_data.set(new Uint8Array(payload));
-    ws.send(message);
 }
-
 
 function request_file_spectrogram(filename, nfft, overlap) {
-    send_msg("request_file_spectrogram", {
+    /* Request the spectrogram for a file.
+
+       Arguments:
+       filename  the file name from which to load audio data.
+       nfft      the FFT length used for calculating the spectrogram.
+       overlap   the amount of overlap between consecutive spectra.
+    */
+
+    send_message("request_file_spectrogram", {
         filename: filename,
         nfft: nfft,
         overlap: overlap
@@ -51,52 +64,89 @@ function request_file_spectrogram(filename, nfft, overlap) {
 }
 
 function request_data_spectrogram(data, nfft, overlap) {
-    send_binary_msg("request_data_spectrogram", {
+    /* Request the spectrogram for a file.
+
+       Arguments:
+       data      the content of a file from which to load audio data.
+       nfft      the FFT length used for calculating the spectrogram.
+       overlap   the amount of overlap between consecutive spectra.
+    */
+
+    send_message("request_data_spectrogram", {
         nfft: nfft,
         overlap: overlap
     }, data);
 }
 
-function send_status(status) {
-    send_msg("status", status);
-}
-
 ws.onmessage = function(event) {
+    /* Parses a message
+
+       Each message must contain the message type, the message
+       content, and an optional binary payload. The decoded message
+       will be forwarded to different functions based on the message
+       type.
+
+       Arguments:
+       event     the message, either as string or ArrayBuffer.
+    */
+
     if (event.data.constructor.name === "ArrayBuffer") {
         var header_len = new Int32Array(event.data, 0, 1)[0];
         var header = String.fromCharCode.apply(null, new Uint8Array(event.data, 4, header_len));
-        try {
-            msg = JSON.parse(header)
-        } catch(e) {
-            console.error("Could not parse header of binary message:", e.message)
-            return
-        }
-        if (msg.type === "spectrogram") {
-            loadSpectrogram(new Float32Array(event.data, header_len+4),
-                            msg.content.extent[0], msg.content.extent[1],
-                            msg.content.fs, msg.content.length);
-        }
     } else {
-        try {
-            msg = JSON.parse(event.data)
-        } catch(e) {
-            console.error("Could not parse message:", e.message)
-            return
-        }
-        if (msg.type === "loading_progress") {
-            if (msg.content.progress === 0 || msg.content.progress === 1) {
-                progressBar.hidden = true;
-            } else {
-                progressBar.hidden = false;
-                progressBar.value = msg.content.progress;
-            }
-        } else {
-            console.log(msg.type, msg.content);
-        }
+        var header = event.data;
+    }
+
+    try {
+        msg = JSON.parse(header);
+    } catch(e) {
+        console.error("Message", e.message, "is not a valid JSON object");
+        return
+    }
+
+    var type = msg.type
+    var content = msg.content
+
+    if (type === "spectrogram") {
+        loadSpectrogram(new Float32Array(event.data, header_len+4),
+                        content.extent[0], content.extent[1],
+                        content.fs, content.length);
+    }
+    else if (type === "loading_progress") {
+        updateProgressBar(content.progress);
+    } else {
+        console.log(type, content);
     }
 }
 
+function updateProgressBar(progress) {
+    /* Sets the progress bar
+
+       If progress is 0 or 1, the progress bar will be turned
+       invisible.
+    */
+
+    var progressBar = document.getElementById('progressBar');
+    if (progress === 0 || progress === 1) {
+        progressBar.hidden = true;
+    } else {
+        progressBar.hidden = false;
+        progressBar.value = progress;
+    }
+}
+
+ws.onopen = reloadSpectrogram;
 function reloadSpectrogram() {
+    /* Loads the spectrogram for the currently seleced file/FFT-length.
+
+       Reads the audioFile input field to get the current file and the
+       select field to get the current FFT length.
+
+       This only sends the request for a spectrogram. Delivering the
+       spectrogram is up to the server.
+    */
+
+    var audioFile = document.getElementById('audioFile').files[0];
     if (!audioFile) {
         console.log("Could not load spectrogram: No file selected");
         return;
@@ -104,16 +154,7 @@ function reloadSpectrogram() {
     var reader = new FileReader();
     reader.readAsArrayBuffer(audioFile);
     reader.onloadend = function () {
+        var fftLen = parseFloat(document.getElementById('fftLen').value);
         request_data_spectrogram(reader.result, fftLen)
     }
-}
-
-function selectAudioFile(files) {
-    audioFile = files[0];
-    reloadSpectrogram();
-}
-
-function selectFFTLen(value) {
-    fftLen = parseFloat(value);
-    reloadSpectrogram();
 }

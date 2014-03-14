@@ -37,13 +37,13 @@
         padding: 2px;
         border-radius: 3px;
         border: 1px #000000 solid;
-        opacity: 0.5;
+        opacity: 0.7;
         font: 10px sans-serif;
       }
       #progressBar {
         position: absolute;
         margin-left: calc(50% - 100px);
-        margin-top: 50%;
+        margin-top: 200px;
         width: 200px;
       }
     </style>
@@ -52,9 +52,9 @@
     <div id="metadata">
       <form>
         <label for="audioFile">File:</label>
-        <input id="audioFile" name="audioFile" type="file" accept="audio/*" onchange="selectAudioFile(this.files)">
+        <input id="audioFile" name="audioFile" type="file" accept="audio/*" onchange="reloadSpectrogram()">
         <label for="fftLen">NFFT:</label>
-        <select id="fftLen" name="fftLen" onchange="selectFFTLen(this.value)">
+        <select id="fftLen" name="fftLen" onchange="reloadSpectrogram()">
           <option>128</option>
           <option>256</option>
           <option>512</option>
