@@ -1,12 +1,9 @@
 var spectrogram = document.getElementById('spectrogram');
 var specTimeScale = document.getElementById('specTimeScale');
-var specFreqScale = document.getElementById('specFreqScale');
+var specFrequencyScale = document.getElementById('specFreqScale');
 var specDataView = document.getElementById('specDataView');
 
-var margin = 10;
-
 var gl;
-var shaderProgram;
 
 var vertexPositionAttribute;
 var textureCoordAttribute;
@@ -24,31 +21,26 @@ var specSize;
 var specViewSize;
 
 function start() {
-    gl = initWebGL(spectrogram);
-
-    window.addEventListener("resize", resizeCanvas, false);
-    resizeCanvas();
-    gl.clearColor(0.0, 0.0, 0.0, 1.0);
-    gl.disable(gl.DEPTH_TEST);
-    gl.clear(gl.COLOR_BUFFER_BIT);
-    logInfo();
-    initShaders();
-    loadSpectrogram(new Float32Array(256), 16, 16);
-    window.requestAnimationFrame(drawScene);
+    /* initialize all canvases */
+    initSpectrogram();
+    window.addEventListener("resize", updateCanvasResolutions, false);
+    updateCanvasResolutions();
 }
 
-function resizeCanvas() {
+function updateCanvasResolutions() {
+    /* set resolution of all canvases to native resolution */
     spectrogram.width = spectrogram.clientWidth;
     spectrogram.height = spectrogram.clientHeight;
     gl.viewport(0, 0, spectrogram.width, spectrogram.height);
     specTimeScale.width = specTimeScale.clientWidth;
     specTimeScale.height = specTimeScale.clientHeight;
-    specFreqScale.width = specFreqScale.clientWidth;
-    specFreqScale.height = specFreqScale.clientHeight;
+    specFrequencyScale.width = specFrequencyScale.clientWidth;
+    specFrequencyScale.height = specFrequencyScale.clientHeight;
     window.requestAnimationFrame(drawScene);
 }
 
-function logInfo() {
+function logGLInfo() {
+    /* log version and memory information about WebGL */
     console.log('Version:', gl.getParameter(gl.VERSION));
     console.log('ShadingLanguageVersion:', gl.getParameter(gl.SHADING_LANGUAGE_VERSION));
     console.log('Vendor:', gl.getParameter(gl.VENDOR));
@@ -56,37 +48,56 @@ function logInfo() {
     console.log('MaxTextureSize:', gl.getParameter(gl.MAX_TEXTURE_SIZE));
 }
 
-function initWebGL(spectrogram) {
-    gl = null;
+function initSpectrogram() {
+    /* get WebGL context and load required extensions */
     try {
         gl = spectrogram.getContext('webgl');
     } catch (e) {
         alert('Could not initialize WebGL');
         gl = null;
     }
+    // needed for floating point textures
     gl.getExtension("OES_texture_float");
     var error = gl.getError();
     if (error != gl.NO_ERROR) {
-        alert("Could not enable float texture extension because");
+        alert("Could not enable float texture extension");
     }
+    // needed for linear filtering of floating point textures
     gl.getExtension("OES_texture_float_linear");
     if (error != gl.NO_ERROR) {
-        alert("Could not enable float texture linear extension because");
+        alert("Could not enable float texture linear extension");
     }
-    return gl;
+    // 2D-drawing only
+    gl.disable(gl.DEPTH_TEST);
+
+    logGLInfo();
+    loadSpectrogramShaders();
+    // load dummy data
+    loadSpectrogram(new Float32Array(1), 1, 1, 44100, 1);
 }
 
-function initShaders() {
-    var fragmentShader = getShader(gl, 'fragmentShader');
-    var vertexShader = getShader(gl, 'vertexShader');
+function loadSpectrogramShaders() {
+    /* link shaders and save uniforms and attributes
 
-    shaderProgram = gl.createProgram();
+       saves the following attributes to global scope:
+       - vertexPositionAttribute: aVertexPosition
+       - textureCoordAttribute: aTextureCoord
+
+       saves the following uniforms to global scope:
+       - samplerUniform: uSampler
+       - zoomUniform: mZoom
+       - ampRangeUniform: vAmpRange
+    */
+    var fragmentShader = getShader('fragmentShader');
+    var vertexShader = getShader('vertexShader');
+
+    var shaderProgram = gl.createProgram();
     gl.attachShader(shaderProgram, vertexShader);
     gl.attachShader(shaderProgram, fragmentShader);
     gl.linkProgram(shaderProgram);
 
     if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-        alert("unable to initialize shader program.");
+        alert("unable to link shader program.");
     }
 
     gl.useProgram(shaderProgram);
@@ -102,34 +113,26 @@ function initShaders() {
     ampRangeUniform = gl.getUniformLocation(shaderProgram, 'vAmpRange');
 }
 
-function getShader(gl, id) {
-    var shaderScript, theSource, currentChild, shader;
+function getShader(id) {
+    /* load and compile a shader
 
-    shaderScript = document.getElementById(id);
+       Attributes:
+       id    the id of a script element that contains the shader source.
 
-    if (!shaderScript) {
-        return null;
-    }
+       Returns the compiled shader.
+    */
 
-    theSource = "";
-    currentChild = shaderScript.firstChild;
+    var script = document.getElementById(id);
 
-    while (currentChild) {
-        if (currentChild.nodeType == currentChild.TEXT_NODE) {
-            theSource += currentChild.textContent;
-        }
-        currentChild = currentChild.nextSibling;
-    }
-
-    if (shaderScript.type == "x-shader/x-fragment") {
-        shader = gl.createShader(gl.FRAGMENT_SHADER);
-    } else if  (shaderScript.type == "x-shader/x-vertex") {
-        shader = gl.createShader(gl.VERTEX_SHADER);
+    if (script.type == "x-shader/x-fragment") {
+        var shader = gl.createShader(gl.FRAGMENT_SHADER);
+    } else if  (script.type == "x-shader/x-vertex") {
+        var shader = gl.createShader(gl.VERTEX_SHADER);
     } else {
         return null;
     }
 
-    gl.shaderSource(shader, theSource);
+    gl.shaderSource(shader, script.innerHTML);
     gl.compileShader(shader);
 
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
@@ -140,74 +143,102 @@ function getShader(gl, id) {
     return shader;
 }
 
-function loadSpectrogram(spectrogram, nblocks, nfreqs, fs, length) {
+function loadSpectrogram(data, nblocks, nfreqs, fs, length) {
+    /* loads a spectrogram into video memory and fills VBOs
+
+       If there is more data than fits into a single texture, several
+       textures are allocated and the data is written into consecutive
+       textures. According vertex positions are saved into an equal
+       number of VBOs.
+
+       - saves textures into a global array `spectrogramTextures`.
+       - saves vertexes into a global array `vertexPositionBuffers`.
+       - saves texture coordinates into global `textureCoordBuffer`.
+
+       Attributes:
+       data       a Float32Array containing nblocks x nfreqs values.
+       nblocks    the width of the data, the number of blocks.
+       nfreqs     the height of the data, the number of frequency bins.
+       fs         the sample rate of the audio data.
+       length     the length of the audio data in seconds.
+    */
+
+    // delete previously allocated textures and VBOs
     for (var i in spectrogramTextures) {
         gl.deleteBuffer(vertexPositionBuffers[i]);
         gl.deleteTexture(spectrogramTextures[i]);
     }
     gl.deleteBuffer(textureCoordBuffer);
 
-    var max_width = gl.getParameter(gl.MAX_TEXTURE_SIZE);
-    var num_textures = Math.ceil(nblocks / max_width);
-    var max_x_coord = nblocks / max_width;
-    if (max_x_coord < 1) { max_x_coord = 1; }
-    vertexPositionBuffers = new Array(num_textures);
-    spectrogramTextures = new Array(num_textures);
+    // calculate the number of textures needed
+    var maxTexSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+    var numTextures = nblocks / maxTexSize;
 
+    vertexPositionBuffers = new Array(Math.ceil(numTextures));
+    spectrogramTextures = new Array(Math.ceil(numTextures));
+
+    // texture coordinates for all textures are identical
     textureCoordBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
-    var textureCoordinates = [
+    var textureCoordinates = new Float32Array([
         1.0, 1.0,
         0.0, 1.0,
         1.0, 0.0,
         0.0, 0.0
-    ];
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoordinates), gl.STATIC_DRAW);
+    ]);
+    gl.bufferData(gl.ARRAY_BUFFER, textureCoordinates, gl.STATIC_DRAW);
 
-    for (var i=0; i<num_textures; i++) {
-        var min_x = i/max_x_coord;
-        var max_x = (i < num_textures-1) ? (i+1)/max_x_coord : 1;
+    // for every texture, calculate vertex indices and texture content
+    for (var i=0; i<numTextures; i++) {
+        // texture position in 0..1:
+        var minX = i/numTextures;
+        var maxX = ((i+1) < numTextures) ? (i+1)/numTextures : 1;
 
+        // calculate vertex positions, scaled to -1..1
         vertexPositionBuffers[i] = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBuffers[i]);
-        var vertices = [
-            max_x * 2 - 1,  1.0,
-            max_x * 2 - 1, -1.0,
-            min_x * 2 - 1,  1.0,
-            min_x * 2 - 1, -1.0
-        ];
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+        var vertices = new Float32Array([
+            maxX * 2 - 1,  1.0,
+            maxX * 2 - 1, -1.0,
+            minX * 2 - 1,  1.0,
+            minX * 2 - 1, -1.0
+        ]);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
 
-        var blocks = (i < num_textures-1) ? max_width : nblocks-(i*max_width);
-        var data = spectrogram.subarray(i*max_width*nfreqs);
+        // fill textures with spectrogram data
+        var blocks = ((i+1) < numTextures) ? maxTexSize : (numTextures%1)*maxTexSize;
+        var chunk = data.subarray(i*maxTexSize*nfreqs, (i*maxTexSize+blocks)*nfreqs);
         spectrogramTextures[i] = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, spectrogramTextures[i]);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, nfreqs, blocks, 0, gl.LUMINANCE, gl.FLOAT, data);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, nfreqs, blocks, 0, gl.LUMINANCE, gl.FLOAT, chunk);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     }
 
+    // save spectrogram sizes
     specSize = new SpecSize(0, length, 0, fs/2);
     specViewSize = new SpecSize(0, length, 0, fs/2, -120, 0);
+
     window.requestAnimationFrame(drawScene);
 }
 
 function drawScene() {
-    if (document.hidden) {
-        return
-    }
+    /* updates the spectrogram and the scales */
     drawSpectrogram();
     drawSpecTimeScale();
-    drawSpecFreqScale();
+    drawSpecFrequencyScale();
 }
 
 function drawSpectrogram() {
-    gl.clear(gl.COLOR_BUFFER_BIT);
+    /* draw the zoomed spectrogram, one texture at a time */
 
+    // load the texture coordinates VBO
     gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
     gl.vertexAttribPointer(textureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
+
+    // set the current model view matrix
     var panX = (specViewSize.centerT() - specSize.centerT()) / specSize.widthT();
     var panY = (specViewSize.centerF() - specSize.centerF()) / specSize.widthF();
     var zoomX = specSize.widthT() / specViewSize.widthT();
@@ -219,8 +250,10 @@ function drawSpectrogram() {
     ];
     gl.uniformMatrix3fv(zoomUniform, gl.FALSE, zoomMatrix);
 
+    // set the current amplitude range to display
     gl.uniform2f(ampRangeUniform, specViewSize.minA, specViewSize.maxA);
 
+    // draw the spectrogram textures
     for (var i=0; i<spectrogramTextures.length; i++) {
         gl.activeTexture(gl.TEXTURE0+i);
         gl.bindTexture(gl.TEXTURE_2D, spectrogramTextures[i]);
@@ -234,6 +267,15 @@ function drawSpectrogram() {
 }
 
 function formatTime(seconds) {
+    /* format a time in mm:ss.ss
+
+       Attributes:
+       seconds    a time in seconds.
+
+       returns a formatted string containing minutes, seconds, and
+         hundredths.
+    */
+
     var minutes = Math.floor(seconds/60);
     var seconds = seconds % 60;
     minutes = minutes.toString();
@@ -248,6 +290,13 @@ function formatTime(seconds) {
 }
 
 function drawSpecTimeScale() {
+    /* draw the time scale canvas
+
+       The time scale prints the minimum and maximum currently visible
+       time and an axis with two ticks. Minimum and maximum time are
+       taken from specViewSize.(min|max)T.
+     */
+
     var ctx = specTimeScale.getContext('2d');
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     // draw axis line and two ticks
@@ -266,22 +315,38 @@ function drawSpecTimeScale() {
     ctx.fillText(text, ctx.canvas.width-textWidth, ctx.canvas.height-2);
 }
 
-function formatFreq(freq) {
-    if (freq < 10) {
-        return freq.toFixed(2) + " Hz";
-    } else if (freq < 100) {
-        return freq.toFixed(1) + " Hz";
-    } else if (freq < 1000) {
-        return Math.round(freq).toString() + " Hz";
-    } else if (freq < 10000) {
-        return (freq/1000).toFixed(2) + " kHz";
+function formatFrequency(frequency) {
+    /* format a frequency
+
+       Attributes:
+       frequency  a frequency in Hz.
+
+       returns a formatted string with the frequency in Hz or kHz,
+         with an appropriate number of decimals.
+    */
+
+    if (frequency < 10) {
+        return frequency.toFixed(2) + " Hz";
+    } else if (frequency < 100) {
+        return frequency.toFixed(1) + " Hz";
+    } else if (frequency < 1000) {
+        return Math.round(frequency).toString() + " Hz";
+    } else if (frequency < 10000) {
+        return (frequency/1000).toFixed(2) + " kHz";
     } else {
-        return (freq/1000).toFixed(1) + " kHz";
+        return (frequency/1000).toFixed(1) + " kHz";
     }
 }
 
-function drawSpecFreqScale() {
-    var ctx = specFreqScale.getContext('2d');
+function drawSpecFrequencyScale() {
+    /* draw the frequency scale canvas
+
+       The frequency scale prints the minimum and maximum currently
+       visible frequency and an axis with two ticks. Minimum and
+       maximum frequency are taken from specViewSize.(min|max)F.
+    */
+
+    var ctx = specFrequencyScale.getContext('2d');
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     // draw axis line and two ticks
     ctx.fillStyle = "black";
@@ -290,16 +355,30 @@ function drawSpecFreqScale() {
     ctx.fillRect(2, ctx.canvas.height-10, 5, 1);
     // draw upper frequency bound
     ctx.font = "8px sans-serif";
-    var text = formatFreq(specViewSize.maxF);
+    var text = formatFrequency(specViewSize.maxF);
     var textWidth = ctx.measureText(text).width;
     ctx.fillText(text, 8, 14);
     // draw lower frequency bound
-    var text = formatFreq(specViewSize.minF);
+    var text = formatFrequency(specViewSize.minF);
     var textWidth = ctx.measureText(text).width;
     ctx.fillText(text, 8, ctx.canvas.height-8);
 }
 
 spectrogram.onwheel = function(wheel) {
+    /* zoom or pan when on scrolling
+
+       If no modifier is pressed, scrolling scrolls the spectrogram.
+
+       If alt is pressed, scrolling changes the displayed amplitude
+       range.
+
+       If ctrl is pressed, scrolling zooms in or out. If ctrl and
+       shift is pressed, scrolling only zooms the time axis.
+
+       At no time will any of this zoom or pan outside of the
+       spectrogram view area.
+     */
+
     var stepF = specViewSize.widthF() / 100;
     var stepT = specViewSize.widthT() / 100;
     if (wheel.altKey) {
@@ -364,7 +443,14 @@ spectrogram.onwheel = function(wheel) {
 }
 
 spectrogram.onmousemove = function(mouse) {
+    /* update the specDataView with cursor position.
+
+       The specDataView should contain the current cursor position in
+       frequency/time coordinates. It is updated every time the mouse
+       is moved on the spectrogram.
+     */
+
     var t = specViewSize.scaleT(mouse.layerX/spectrogram.clientWidth);
     var f = specViewSize.scaleF(1-mouse.layerY/spectrogram.clientHeight);
-    specDataView.innerHTML = formatTime(t) + ", " + formatFreq(f);
+    specDataView.innerHTML = formatTime(t) + ", " + formatFrequency(f);
 }
