@@ -7,97 +7,182 @@ import matplotlib.pyplot as plt
 import sys
 import io
 
-class EchoWebSocket(WebSocketHandler):
+class JSONWebSocket(WebSocketHandler):
+    """A websocket that sends/receives JSON messages.
+
+    Each message has a type, a content and optional binary data.
+    Message type and message content are stored as a JSON object. Type
+    must be a string and content must be JSON-serializable.
+
+    If binary data is present, the message will be sent in binary,
+    with the first four bytes storing a signed integer containing the
+    length of the JSON data, then the JSON data, then the binary data.
+    The binary data will be stored 8-byte aligned.
+
+    """
 
     def open(self):
-        self.send_message("status", "Server started")
         print("WebSocket opened")
 
-    def send_message(self, type_, content):
+    def send_message(self, msg_type, content, data=None):
         """Send a message.
 
         Arguments:
-        type      the message type as string
-        content   the message content as json-serializable data
+        msg_type  the message type as string.
+        content   the message content as json-serializable data.
+        data      raw bytes that are appended to the message.
 
         """
 
-        self.write_message(json.dumps({ "type": type_,
-                                        "content": content }).encode())
-
-    def send_binary_message(self, type_, content, data):
-        """Send a binary message that consists of three parts:
-
-        - the length of the header as a 32 bit signed integer
-        - the header, as utf-8 encoded JSON string
-        - the payload, byte-aligned to 8 byte
-
-        Arguments:
-        metadata  is a dictionary that will be saved in the header.
-        data      is a numpy array that will make up the payload.
-
-        """
-
-        header = json.dumps({'type':type_, 'content':content}).encode()
-        # append enough spaces so that the payload starts at an 8-byte
-        # aligned position. The first four bytes will be the length of
-        # the header, encoded as a 32 bit signed integer:
-        header += b' ' * (8-((len(header)+4) % 8))
-        # the length of the header as a binary 32 bit signed integer:
-        prefix = len(header).to_bytes(4, sys.byteorder)
-        payload = data.tostring()
-        self.write_message(prefix + header + payload, binary=True)
+        if data is None:
+            self.write_message(json.dumps({ "type": msg_type,
+                                            "content": content }).encode())
+        else:
+            header = json.dumps({ 'type': msg_type,
+                                  'content':content }).encode()
+            # append enough spaces so that the payload starts at an 8-byte
+            # aligned position. The first four bytes will be the length of
+            # the header, encoded as a 32 bit signed integer:
+            header += b' ' * (8-((len(header)+4) % 8))
+            # the length of the header as a binary 32 bit signed integer:
+            prefix = len(header).to_bytes(4, sys.byteorder)
+            self.write_message(prefix + header + data, binary=True)
 
     def on_message(self, msg):
-        if isinstance(msg, str):
-            try:
-                header = json.loads(msg)
-            except ValueError:
-                print('message {} is not a valid JSON object'.format(msg))
-        else:
-            header_len = int.from_bytes(msg[:4], byteorder=sys.byteorder)
-            header = json.loads(msg[4:header_len+4].decode())
-            payload = msg[4+header_len:]
+        """Parses a message
 
-        if header['type'] == 'status':
-            print("Status Message:", header['content'])
-        elif header['type'] == 'request_file_spectrogram':
-            data, fs, length = self.file_spectrogram(**header['content'])
-            self.send_binary_message('spectrogram',
-                                     {'extent': data.shape,
-                                      'fs': fs,
-                                      'length': length},
-                                     data)
-        elif header['type'] == 'request_data_spectrogram':
-            data, fs, length = self.data_spectrogram(payload, **header['content'])
-            self.send_binary_message('spectrogram',
-                                     {'extent': data.shape,
-                                      'fs': fs,
-                                      'length': length},
-                                     data)
+        Each message must contain the message type, the message
+        content, and an optional binary payload. The decoded message
+        will be forwarded to receive_message().
+
+        Arguments:
+        msg       the message, either as str or bytes.
+
+        """
+
+        if isinstance(msg, bytes):
+            header_len = int.from_bytes(msg[:4], byteorder=sys.byteorder)
+            header = msg[4:header_len+4].decode()
+            data = msg[4+header_len:]
         else:
-            print("Don't know what to do with message of type {}".format(header['type']))
+            header = msg
+            data = None
+
+        try:
+            header = json.loads(header)
+        except ValueError:
+            print('message {} is not a valid JSON object'.format(msg))
+            return
+
+        if not 'type' in header:
+            print('message {} does not have a "type" field'.format(header))
+        elif not 'content' in header:
+            print('message {} does not have a "content" field'.format(header))
+        else:
+            self.receive_message(header['type'], header['content'], data)
+
+    def receive_message(self, msg_type, content, data=None):
+        """Message dispatcher.
+
+        This is meant to be overwritten by subclasses. By itself, it
+        does nothing but complain.
+
+        """
+
+        print("Don't know what to do with message of type {}".format(msg_type))
 
     def on_close(self):
         print("WebSocket closed")
 
-    def data_spectrogram(self, data, nfft=256, overlap=0.5):
-        file = SoundFile(io.BytesIO(data), virtual_io=True)
-        data = file[:].sum(axis=1)
-        return self.spectrogram(data, file.sample_rate, nfft, overlap)
 
-    def file_spectrogram(self, filename, nfft=256, overlap=0.5):
+class SpectrogramWebSocket(JSONWebSocket):
+    """A websocket that sends spectrogram data.
+
+    It calculates a spectrogram with a given FFT length and overlap
+    for a requested file. The file can either be supplied as a binary
+    data blob, or as a file name.
+
+    This implements two message types:
+    - request_file_spectrogram, which needs a filename, and optionally
+      `nfft` and `overlap`.
+    - request_data_spectrogram, which needs the file as a binary data
+      blob, and optionally `nfft` and `overlap`.
+
+    """
+
+    def receive_message(self, msg_type, content, data=None):
+        """Message dispatcher.
+
+        Dispatches
+        - `request_file_spectrogram` to self.on_file_spectrogram
+        - `request_data_spectrogram` to self.on_data_spectrogram
+
+        Arguments:
+        msg_type  the message type as string.
+        content   the message content as dictionary.
+        data      raw bytes.
+
+        """
+
+        if msg_type == 'request_file_spectrogram':
+            self.on_file_spectrogram(**content)
+        elif msg_type == 'request_data_spectrogram':
+            self.on_data_spectrogram(data, **content)
+        else:
+            print("Don't know what to do with message of type {}".format(msg_type))
+
+    def on_file_spectrogram(self, filename, nfft=1024, overlap=0.5):
+        """Loads an audio file and calculates a spectrogram.
+
+        Arguments:
+        filename  the file name from which to load the audio data.
+        nfft      the FFT length used for calculating the spectrogram.
+        overlap   the amount of overlap between consecutive spectra.
+
+        """
+
         file = SoundFile(filename)
-        data = file[:].sum(axis=1)
-        return self.spectrogram(data, file.sample_rate, nfft, overlap)
+        sound = file[:].sum(axis=1)
+        spec = self.spectrogram(sound, nfft, overlap)
 
-    def spectrogram(self, data, sample_rate, nfft, overlap):
+        self.send_message('spectrogram',
+                          {'extent': data.shape,
+                           'fs': file.sample_rate,
+                           'length': len(file)/file.sample_rate},
+                          spec.tostring())
+
+    def on_data_spectrogram(self, data, nfft=1024, overlap=0.5):
+        """Loads an audio file and calculates a spectrogram.
+
+        Arguments:
+        data      the content of a file from which to load audio data.
+        nfft      the FFT length used for calculating the spectrogram.
+        overlap   the amount of overlap between consecutive spectra.
+
+        """
+
+        file = SoundFile(io.BytesIO(data), virtual_io=True)
+        sound = file[:].sum(axis=1)
+        spec = self.spectrogram(sound, nfft, overlap)
+
+        self.send_message('spectrogram',
+                          {'extent': spec.shape,
+                           'fs': file.sample_rate,
+                           'length': len(file)/file.sample_rate},
+                          spec.tostring())
+
+    def spectrogram(self, data, nfft, overlap):
         """Calculate a real spectrogram from audio data
 
         An audio data will be cut up into overlapping blocks of length
         `nfft`. The amount of overlap will be `overlap*nfft`. Then,
         calculate a real fourier transform of length `nfft` of every
         block and save the absolute spectrum.
+
+        Arguments:
+        data      audio data as a numpy array.
+        nfft      the FFT length used for calculating the spectrogram.
+        overlap   the amount of overlap between consecutive spectra.
 
         """
 
@@ -111,14 +196,14 @@ class EchoWebSocket(WebSocketHandler):
                 self.send_message("loading_progress", {"progress": idx/num_blocks})
         specs[:,-1] = np.abs(np.fft.rfft(data[num_blocks*shift:], n=nfft))/nfft
         self.send_message("loading_progress", {"progress": 1})
-        return specs.T, sample_rate, len(data)/sample_rate
+        return specs.T
 
 
 if __name__ == "__main__":
     from tornado.web import Application
     from tornado.ioloop import IOLoop
 
-    app = Application([ ("/websocket", EchoWebSocket) ])
+    app = Application([ ("/spectrogram", SpectrogramWebSocket) ])
 
     app.listen(8888)
     IOLoop.instance().start()

@@ -1,4 +1,4 @@
-var ws = new WebSocket("ws://localhost:8888/websocket");
+var ws = new WebSocket("ws://localhost:8888/spectrogram");
 ws.binaryType = 'arraybuffer';
 
 ws.onopen = reloadSpectrogram;
