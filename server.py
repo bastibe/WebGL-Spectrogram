@@ -1,11 +1,10 @@
-from tornado.websocket import WebSocketHandler
-import numpy as np
-from scipy.signal import hann
 import json
-from pysoundfile import SoundFile
-import matplotlib.pyplot as plt
 import sys
 import io
+import numpy as np
+from tornado.websocket import WebSocketHandler
+from scipy.signal import hann
+from pysoundfile import SoundFile
 
 class JSONWebSocket(WebSocketHandler):
     """A websocket that sends/receives JSON messages.
