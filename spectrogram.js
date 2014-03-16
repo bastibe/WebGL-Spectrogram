@@ -166,6 +166,16 @@ function loadSpectrogram(data, nblocks, nfreqs, fs, length) {
        length     the length of the audio data in seconds.
     */
 
+    // calculate the number of textures needed
+    var maxTexSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+    var numTextures = nblocks / maxTexSize;
+
+    // bail if too big for video memory
+    if (Math.ceil(numTextures) > gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS)) {
+        alert("Not enough texture units to display spectrogram");
+        return;
+    }
+
     // delete previously allocated textures and VBOs
     for (var i in spectrogramTextures) {
         gl.deleteBuffer(vertexPositionBuffers[i]);
@@ -173,9 +183,6 @@ function loadSpectrogram(data, nblocks, nfreqs, fs, length) {
     }
     gl.deleteBuffer(textureCoordBuffer);
 
-    // calculate the number of textures needed
-    var maxTexSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
-    var numTextures = nblocks / maxTexSize;
 
     vertexPositionBuffers = new Array(Math.ceil(numTextures));
     spectrogramTextures = new Array(Math.ceil(numTextures));
