@@ -456,5 +456,7 @@ spectrogram.onmousemove = function(mouse) {
 
     var t = specViewSize.scaleT(mouse.layerX/spectrogram.clientWidth);
     var f = specViewSize.scaleF(1-mouse.layerY/spectrogram.clientHeight);
-    specDataView.innerHTML = formatTime(t) + ", " + formatFrequency(f);
+    specDataView.innerHTML = formatTime(t) + ", " + formatFrequency(f) + "<br/>" +
+        specViewSize.centerA().toFixed(2) + " dB " +
+        "&plusmn; " + (specViewSize.widthA()/2).toFixed(2) + " dB" ;
 }
