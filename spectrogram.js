@@ -41,11 +41,13 @@ function updateCanvasResolutions() {
 
 function logGLInfo() {
     /* log version and memory information about WebGL */
-    console.log('Version:', gl.getParameter(gl.VERSION));
-    console.log('ShadingLanguageVersion:', gl.getParameter(gl.SHADING_LANGUAGE_VERSION));
-    console.log('Vendor:', gl.getParameter(gl.VENDOR));
-    console.log('Renderer:', gl.getParameter(gl.RENDERER));
-    console.log('MaxTextureSize:', gl.getParameter(gl.MAX_TEXTURE_SIZE));
+    sendMessage('information',
+        "version: " + gl.getParameter(gl.VERSION) + "\n" +
+        "shading language version: " + gl.getParameter(gl.SHADING_LANGUAGE_VERSION) + "\n" +
+        "vendor: " + gl.getParameter(gl.VENDOR) + "\n" +
+        "renderer: " + gl.getParameter(gl.RENDERER) + "\n" +
+        "max texture size: " + gl.getParameter(gl.MAX_TEXTURE_SIZE) + "\n" +
+        "max combined texture image units: " + gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS));
 }
 
 function initSpectrogram() {
@@ -70,8 +72,9 @@ function initSpectrogram() {
     // 2D-drawing only
     gl.disable(gl.DEPTH_TEST);
 
-    logGLInfo();
+    // get shaders ready
     loadSpectrogramShaders();
+
     // load dummy data
     loadSpectrogram(new Float32Array(1), 1, 1, 44100, 1);
 }

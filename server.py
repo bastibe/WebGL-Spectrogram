@@ -88,7 +88,11 @@ class JSONWebSocket(WebSocketHandler):
 
         """
 
-        print("Don't know what to do with message of type {}".format(msg_type))
+        if msg_type == "information":
+            print(content)
+        else:
+            print(("Don't know what to do with message of type {}" +
+                   "and content {}").format(msg_type, content))
 
     def on_close(self):
         print("WebSocket closed")
@@ -128,7 +132,7 @@ class SpectrogramWebSocket(JSONWebSocket):
         elif msg_type == 'request_data_spectrogram':
             self.on_data_spectrogram(data, **content)
         else:
-            print("Don't know what to do with message of type {}".format(msg_type))
+            super(self.__class__, self).receive_message(msg_type, content, data)
 
     def on_file_spectrogram(self, filename, nfft=1024, overlap=0.5):
         """Loads an audio file and calculates a spectrogram.

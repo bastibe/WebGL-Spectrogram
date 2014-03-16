@@ -10,7 +10,7 @@ function sendMessage(type, content, payload) {
        payload   binary data as ArrayBuffer.
     */
 
-    if (payload === null) {
+    if (payload === undefined) {
         ws.send(JSON.stringify({
             type: type,
             content: content
@@ -135,7 +135,12 @@ function updateProgressBar(progress) {
     }
 }
 
-ws.onopen = reloadSpectrogram;
+ws.onopen = function () {
+    /* log some info about the GL, then display spectrogram */
+    logGLInfo();
+    reloadSpectrogram();
+}
+
 function reloadSpectrogram() {
     /* Loads the spectrogram for the currently seleced file/FFT-length.
 
