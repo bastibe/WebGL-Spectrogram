@@ -422,14 +422,14 @@ spectrogram.onwheel = function(wheel) {
             specViewSize.maxF += specSize.maxF - specViewSize.maxF;
         }
     } else {
-        var deltaT = wheel.deltaX * stepT/10;
+        var deltaT = (wheel.shiftKey ? -wheel.deltaY : wheel.deltaX) * stepT/10;
         if (specViewSize.maxT + deltaT > specSize.maxT) {
             deltaT = specSize.maxT - specViewSize.maxT;
         }
         if (specViewSize.minT + deltaT < specSize.minT) {
             deltaT = specSize.minT - specViewSize.minT;
         }
-        var deltaF = -wheel.deltaY * stepF/10;
+        var deltaF = (wheel.shiftKey ? wheel.deltaX : -wheel.deltaY) * stepF/10;
         if (specViewSize.maxF + deltaF > specSize.maxF) {
             deltaF = specSize.maxF - specViewSize.maxF;
         }
