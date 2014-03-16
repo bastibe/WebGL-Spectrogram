@@ -373,7 +373,7 @@ spectrogram.onwheel = function(wheel) {
        If no modifier is pressed, scrolling scrolls the spectrogram.
 
        If alt is pressed, scrolling changes the displayed amplitude
-       range.
+       range. Pressing shift as well switches X/Y scrolling.
 
        If ctrl is pressed, scrolling zooms in or out. If ctrl and
        shift is pressed, scrolling only zooms the time axis.
@@ -387,8 +387,9 @@ spectrogram.onwheel = function(wheel) {
     if (wheel.altKey) {
         var center = specViewSize.centerA();
         var range  = specViewSize.widthA();
-        range += wheel.deltaX/10;
-        center += wheel.deltaY/10;
+        range += wheel.shiftKey ? wheel.deltaY/10 : wheel.deltaX/10;
+        range = Math.max(range, 1);
+        center += wheel.shiftKey ? wheel.deltaX/10 : wheel.deltaY/10;
         specViewSize.minA = center-range/2;
         specViewSize.maxA = center+range/2;
     } else if (wheel.ctrlKey) {
