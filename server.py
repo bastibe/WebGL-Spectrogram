@@ -203,10 +203,13 @@ class SpectrogramWebSocket(JSONWebSocket):
 
 
 if __name__ == "__main__":
+    import os
+    import webbrowser
     from tornado.web import Application
     from tornado.ioloop import IOLoop
 
     app = Application([ ("/spectrogram", SpectrogramWebSocket) ])
 
     app.listen(8888)
+    webbrowser.open('file://{}/main.html'.format(os.getcwd()))
     IOLoop.instance().start()
