@@ -1,4 +1,4 @@
-var spectrogram = document.getElementById('spectrogram');
+var specView = document.getElementById('spectrogram');
 var specTimeScale = document.getElementById('specTimeScale');
 var specFrequencyScale = document.getElementById('specFreqScale');
 var specDataView = document.getElementById('specDataView');
@@ -29,9 +29,9 @@ function start() {
 
 function updateCanvasResolutions() {
     /* set resolution of all canvases to native resolution */
-    spectrogram.width = spectrogram.clientWidth;
-    spectrogram.height = spectrogram.clientHeight;
-    gl.viewport(0, 0, spectrogram.width, spectrogram.height);
+    specView.width = specView.clientWidth;
+    specView.height = specView.clientHeight;
+    gl.viewport(0, 0, specView.width, specView.height);
     specTimeScale.width = specTimeScale.clientWidth;
     specTimeScale.height = specTimeScale.clientHeight;
     specFrequencyScale.width = specFrequencyScale.clientWidth;
@@ -53,7 +53,7 @@ function logGLInfo() {
 function initSpectrogram() {
     /* get WebGL context and load required extensions */
     try {
-        gl = spectrogram.getContext('webgl');
+        gl = specView.getContext('webgl');
     } catch (e) {
         alert('Could not initialize WebGL');
         gl = null;
@@ -374,7 +374,7 @@ function drawSpecFrequencyScale() {
     ctx.fillText(text, 8, ctx.canvas.height-8);
 }
 
-spectrogram.onwheel = function(wheel) {
+specView.onwheel = function(wheel) {
     /* zoom or pan when on scrolling
 
        If no modifier is pressed, scrolling scrolls the spectrogram.
@@ -449,11 +449,11 @@ spectrogram.onwheel = function(wheel) {
         specViewSize.maxT += deltaT;
     }
     wheel.preventDefault();
-    spectrogram.onmousemove(wheel);
+    specView.onmousemove(wheel);
     window.requestAnimationFrame(drawScene);
 }
 
-spectrogram.onmousemove = function(mouse) {
+specView.onmousemove = function(mouse) {
     /* update the specDataView with cursor position.
 
        The specDataView should contain the current cursor position in
@@ -461,8 +461,8 @@ spectrogram.onmousemove = function(mouse) {
        is moved on the spectrogram.
      */
 
-    var t = specViewSize.scaleT(mouse.layerX/spectrogram.clientWidth);
-    var f = specViewSize.scaleF(1-mouse.layerY/spectrogram.clientHeight);
+    var t = specViewSize.scaleT(mouse.layerX/specView.clientWidth);
+    var f = specViewSize.scaleF(1-mouse.layerY/specView.clientHeight);
     specDataView.innerHTML = formatTime(t) + ", " + formatFrequency(f) + "<br/>" +
         specViewSize.centerA().toFixed(2) + " dB " +
         "&plusmn; " + (specViewSize.widthA()/2).toFixed(2) + " dB" ;
