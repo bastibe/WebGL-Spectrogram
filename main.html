@@ -62,6 +62,12 @@
           <option>2048</option>
           <option>4096</option>
         </select>
+        <label for="specMode">Mode:</label>
+        <select id="specMode" name="specMode" onchange="window.requestAnimationFrame(drawScene);">
+          <option selected="selected">normal</option>
+          <option>direction</option>
+          <option>multiple</option>
+        </select>
       </form>
     </div>
     <div id="specContainer">
@@ -76,6 +82,8 @@
 
       uniform sampler2D uSampler;
       uniform highp vec2 vAmpRange;
+      uniform highp vec2 vSpecSize;
+      uniform int uSpecMode;
 
       highp vec3 physicalColor(highp float amplitude) {
           highp float fractional = mod(amplitude*8.0, 1.0);
@@ -99,13 +107,53 @@
           }
       }
 
-      void main() {
-          highp float amplitude = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t)).r;
+      highp vec3 normalMode() {
+          highp float amplitude = texture2D(uSampler, vTextureCoord).r;
           amplitude = 20.0*log(amplitude)/log(10.0);
           amplitude = max(amplitude, vAmpRange[0]);
           amplitude = min(amplitude, vAmpRange[1]);
           amplitude = (amplitude - vAmpRange[0]) / (vAmpRange[1] - vAmpRange[0]);
-          gl_FragColor = vec4(physicalColor(amplitude), 1.0);
+          return physicalColor(amplitude);
+      }
+
+      highp vec3 direction() {
+          highp vec2 d = vec2(0.0, 0.0);
+          for (int x=-3; x<3; x++) {
+              for (int y=0; y<3; y++) {
+                  highp vec2 vIter=vec2(x, y);
+                  highp float amplitude = texture2D(uSampler, vTextureCoord+vIter/vec2(vSpecSize.y, vSpecSize.x)).r * texture2D(uSampler, vTextureCoord-vIter/vec2(vSpecSize.y, vSpecSize.x)).r;
+                  d += vIter * amplitude;
+              }
+          }
+          highp float direction = (atan(d.x, d.y) + 3.14)/6.28;
+          highp float strength = sqrt(d.x*d.x + d.y*d.y);
+          return vec3(direction, direction, direction);
+      }
+
+      highp vec3 multiples() {
+          highp float amplitude = 0.0;
+          for (int m=1; m<10; m++) {
+              highp float x = vTextureCoord.x*float(m);
+              if (x<1.0) {
+                  amplitude += texture2D(uSampler, vec2(x, vTextureCoord.y)).r;
+              }
+          }
+          amplitude /= floor(1.0/vTextureCoord.x);
+          amplitude = 20.0*log(amplitude)/log(10.0);
+          amplitude = max(amplitude, vAmpRange[0]);
+          amplitude = min(amplitude, vAmpRange[1]);
+          amplitude = (amplitude - vAmpRange[0]) / (vAmpRange[1] - vAmpRange[0]);
+          return physicalColor(amplitude);
+      }
+
+      void main() {
+          if (uSpecMode == 0) {
+              gl_FragColor = vec4(normalMode(), 1.0);
+          } else if (uSpecMode == 1) {
+              gl_FragColor = vec4(direction(), 1.0);
+          } else if (uSpecMode == 2) {
+              gl_FragColor = vec4(multiples(), 1.0);
+          }
       }
     </script>
     <script id="vertexShader" type="x-shader/x-vertex">

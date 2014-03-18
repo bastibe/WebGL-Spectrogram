@@ -11,6 +11,8 @@ var textureCoordAttribute;
 var samplerUniform;
 var ampRangeUniform;
 var zoomUniform;
+var specSizeUniform;
+var specModeUniform;
 
 var vertexPositionBuffers;
 var textureCoordBuffer;
@@ -90,6 +92,8 @@ function loadSpectrogramShaders() {
        - samplerUniform: uSampler
        - zoomUniform: mZoom
        - ampRangeUniform: vAmpRange
+       - specSizeUniform: vSpecSize
+       - specModeUniform: uSpecMode
     */
     var fragmentShader = getShader('fragmentShader');
     var vertexShader = getShader('vertexShader');
@@ -114,6 +118,8 @@ function loadSpectrogramShaders() {
     samplerUniform = gl.getUniformLocation(shaderProgram, 'uSampler');
     zoomUniform = gl.getUniformLocation(shaderProgram, 'mZoom');
     ampRangeUniform = gl.getUniformLocation(shaderProgram, 'vAmpRange');
+    specSizeUniform = gl.getUniformLocation(shaderProgram, 'vSpecSize');
+    specModeUniform = gl.getUniformLocation(shaderProgram, 'uSpecMode');
 }
 
 function getShader(id) {
@@ -229,6 +235,8 @@ function loadSpectrogram(data, nblocks, nfreqs, fs, length) {
 
     // save spectrogram sizes
     specSize = new SpecSize(0, length, 0, fs/2);
+    specSize.numT = nblocks;
+    specSize.numF = nfreqs;
     specViewSize = new SpecSize(0, length, 0, fs/2, -120, 0);
 
     window.requestAnimationFrame(drawScene);
@@ -262,6 +270,11 @@ function drawSpectrogram() {
 
     // set the current amplitude range to display
     gl.uniform2f(ampRangeUniform, specViewSize.minA, specViewSize.maxA);
+    // set the size of the spectrogram
+    gl.uniform2f(specSizeUniform, specSize.numT, specSize.numF);
+    // set the spectrogram display mode
+    var specMode = spectrogramMode(document.getElementById('specMode').value);
+    gl.uniform1i(specModeUniform, specMode);
 
     // draw the spectrogram textures
     for (var i=0; i<spectrogramTextures.length; i++) {
@@ -466,4 +479,15 @@ specView.onmousemove = function(mouse) {
     specDataView.innerHTML = formatTime(t) + ", " + formatFrequency(f) + "<br/>" +
         specViewSize.centerA().toFixed(2) + " dB " +
         "&plusmn; " + (specViewSize.widthA()/2).toFixed(2) + " dB" ;
+}
+
+function spectrogramMode(mode) {
+    /* convert string spectrogram mode to integer */
+    if (mode === 'normal') {
+        return 0;
+    } else if (mode === 'direction') {
+        return 1;
+    } else if (mode === 'multiple') {
+        return 2;
+    }
 }
