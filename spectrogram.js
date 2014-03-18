@@ -226,8 +226,7 @@ function loadSpectrogram(data, nblocks, nfreqs, fs, length) {
         var chunk = data.subarray(i*maxTexSize*nfreqs, (i*maxTexSize+blocks)*nfreqs);
         spectrogramTextures[i] = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, spectrogramTextures[i]);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, nfreqs, blocks, 0, gl.LUMINANCE, gl.FLOAT, chunk);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, blocks, nfreqs, 0, gl.LUMINANCE, gl.FLOAT, tmp);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -275,6 +274,10 @@ function drawSpectrogram() {
     // set the spectrogram display mode
     var specMode = spectrogramMode(document.getElementById('specMode').value);
     gl.uniform1i(specModeUniform, specMode);
+
+    // switch interpolation on or off
+    var interpolate = document.getElementById('specInterpolation').checked;
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, interpolate ? gl.LINEAR : gl.NEAREST);
 
     // draw the spectrogram textures
     for (var i=0; i<spectrogramTextures.length; i++) {
