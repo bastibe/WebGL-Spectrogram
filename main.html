@@ -114,6 +114,26 @@
           }
       }
 
+      // from http://lolengine.net/blog/2013/07/27/rgb-to-hsv-in-glsl
+      highp vec3 rgb2hsv(highp vec3 c)
+      {
+          highp vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+          highp vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+          highp vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+
+          highp float d = q.x - min(q.w, q.y);
+          highp float e = 1.0e-10;
+          return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+      }
+
+      // from http://lolengine.net/blog/2013/07/27/rgb-to-hsv-in-glsl
+      highp vec3 hsv2rgb(highp vec3 c)
+      {
+          highp vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+          highp vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+          return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+      }
+
       highp float logScale(highp float value) {
           value = 20.0*log(value)/log(10.0);
           value = max(value, vAmpRange[0]);
@@ -135,29 +155,76 @@
 
       highp vec3 direction() {
           highp vec2 d = vec2(0.0, 0.0);
-          for (int x=0; x<=4; x++) {
-              for (int y=-4; y<=4; y+=1) {
+          for (int x=0; x<=5; x++) {
+              for (int y=-5; y<=5; y+=1) {
                   highp vec2 vIter=vec2(x, y);
                   highp float amplitude = texture2D(uSampler, vTextureCoord+vIter/vSpecSize).r *
                                           texture2D(uSampler, vTextureCoord-vIter/vSpecSize).r;
-                  d += vIter * amplitude;// / sqrt(float(x*x + y*y));
+                  d += vIter * amplitude / ((x==0&&y==0) ? 1.0 : sqrt(float(x*x + y*y)));
               }
           }
           highp float direction = atan(d.x, d.y)/3.14;
           highp float strength = sqrt(d.x*d.x + d.y*d.y);
           strength = logScale(strength*1000.0);
-          return vec3(-min(direction-0.5, 0.0)+strength, strength, max(direction-0.5, 0.0)+strength);
+          return hsv2rgb(vec3((direction-0.5), abs((direction-0.5))*2.0, strength));
+      }
+
+      highp float amplitudeAt(highp float angle, highp float distance) {
+          highp vec2 coord = vec2(cos(angle)*distance,
+                                  sin(angle)*distance);
+          highp float amplitude = texture2D(uSampler, vTextureCoord+coord/vSpecSize).r *
+                                  texture2D(uSampler, vTextureCoord-coord/vSpecSize).r;
+          return amplitude;
+      }
+
+      highp float amplitudesAt(highp float angle) {
+          highp float amplitude = 0.0;
+          for (int i=1; i<=5; i++) {
+              amplitude += amplitudeAt(angle, float(i))/float(i*i);
+          }
+          return amplitude;
+      }
+
+      highp vec3 direction2() {
+          highp vec2 histogram[16];
+          histogram[0] = vec2(amplitudesAt(-3.14), -3.14);
+          histogram[1] = vec2(amplitudesAt(-2.36), -2.36);
+          histogram[2] = vec2(amplitudesAt(-1.57), -1.57);
+          histogram[3] = vec2(amplitudesAt(-0.78), -0.78);
+          histogram[4] = vec2(amplitudesAt( 0.0 ),  0.0 );
+          histogram[5] = vec2(amplitudesAt( 0.78),  0.78);
+          histogram[6] = vec2(amplitudesAt( 1.57),  1.57);
+          histogram[7] = vec2(amplitudesAt( 2.36),  2.36);
+          histogram[9] = vec2(amplitudesAt( 3.14),  3.14);
+
+          highp vec2 max_value = vec2(0.0, 0.0);
+          max_value = histogram[0].x > max_value.x ? histogram[0] : max_value;
+          max_value = histogram[1].x > max_value.x ? histogram[1] : max_value;
+          max_value = histogram[2].x > max_value.x ? histogram[2] : max_value;
+          max_value = histogram[3].x > max_value.x ? histogram[3] : max_value;
+          max_value = histogram[4].x > max_value.x ? histogram[4] : max_value;
+          max_value = histogram[5].x > max_value.x ? histogram[5] : max_value;
+          max_value = histogram[6].x > max_value.x ? histogram[6] : max_value;
+          max_value = histogram[7].x > max_value.x ? histogram[7] : max_value;
+          max_value = histogram[8].x > max_value.x ? histogram[8] : max_value;
+          max_value = histogram[9].x > max_value.x ? histogram[9] : max_value;
+          // scale to a third color rotation from green to red.
+          highp float direction = max_value.y/3.14/3.0+0.333;
+          highp float value = logScale(max_value.x);
+          return hsv2rgb(vec3(direction, 1.0, value));
       }
 
       highp vec3 multiples() {
-          highp float amplitude = 0.0;
-          for (int m=1; m<10; m++) {
+          highp float amplitude = texture2D(uSampler, vTextureCoord).r;
+          int iterations = 0;
+          for (int m=2; m<=5; m++) {
               highp float y = vTextureCoord.y*float(m);
               if (y<1.0) {
-                  amplitude += texture2D(uSampler, vec2(vTextureCoord.x, y)).r;
+                  amplitude *= texture2D(uSampler, vec2(vTextureCoord.x, y)).r;
+                  iterations++;
               }
           }
-          amplitude /= floor(1.0/vTextureCoord.y);
+          amplitude = pow(amplitude, 1.0/float(iterations));
           amplitude = logScale(amplitude);
           return physicalColor(amplitude);
       }
@@ -168,7 +235,7 @@
           } else if (uSpecMode == 1) {
               gl_FragColor = vec4(normalMode(), 1.0);
           } else if (uSpecMode == 2) {
-              gl_FragColor = vec4(direction(), 1.0);
+              gl_FragColor = vec4(direction2(), 1.0);
           } else if (uSpecMode == 3) {
               gl_FragColor = vec4(multiples(), 1.0);
           }
