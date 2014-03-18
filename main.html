@@ -63,8 +63,9 @@
           <option>4096</option>
         </select>
         <label for="specMode">Mode:</label>
-        <select id="specMode" name="specMode" onchange="window.requestAnimationFrame(drawScene);">
-          <option selected="selected">normal</option>
+        <select id="specMode" name="specMode" onchange="window.requestAnimationFrame(drawScene)">
+          <option selected="selected">physical</option>
+          <option>normal</option>
           <option>direction</option>
           <option>multiple</option>
         </select>
@@ -109,51 +110,62 @@
           }
       }
 
+      highp float logScale(highp float value) {
+          value = 20.0*log(value)/log(10.0);
+          value = max(value, vAmpRange[0]);
+          value = min(value, vAmpRange[1]);
+          value = (value - vAmpRange[0]) / (vAmpRange[1] - vAmpRange[0]);
+          return value;
+      }
+
+      highp vec3 physicalMode() {
+          highp float amplitude = texture2D(uSampler, vTextureCoord).r;
+          return physicalColor(logScale(amplitude));
+      }
+
       highp vec3 normalMode() {
           highp float amplitude = texture2D(uSampler, vTextureCoord).r;
-          amplitude = 20.0*log(amplitude)/log(10.0);
-          amplitude = max(amplitude, vAmpRange[0]);
-          amplitude = min(amplitude, vAmpRange[1]);
-          amplitude = (amplitude - vAmpRange[0]) / (vAmpRange[1] - vAmpRange[0]);
-          return physicalColor(amplitude);
+          amplitude = logScale(amplitude);
+          return vec3(amplitude, amplitude, amplitude);
       }
 
       highp vec3 direction() {
           highp vec2 d = vec2(0.0, 0.0);
-          for (int x=-3; x<3; x++) {
-              for (int y=0; y<3; y++) {
+          for (int x=0; x<=4; x++) {
+              for (int y=-4; y<=4; y+=1) {
                   highp vec2 vIter=vec2(x, y);
-                  highp float amplitude = texture2D(uSampler, vTextureCoord+vIter/vec2(vSpecSize.y, vSpecSize.x)).r * texture2D(uSampler, vTextureCoord-vIter/vec2(vSpecSize.y, vSpecSize.x)).r;
-                  d += vIter * amplitude;
+                  highp float amplitude = texture2D(uSampler, vTextureCoord+vIter/vSpecSize).r *
+                                          texture2D(uSampler, vTextureCoord-vIter/vSpecSize).r;
+                  d += vIter * amplitude;// / sqrt(float(x*x + y*y));
               }
           }
-          highp float direction = (atan(d.x, d.y) + 3.14)/6.28;
+          highp float direction = atan(d.x, d.y)/3.14;
           highp float strength = sqrt(d.x*d.x + d.y*d.y);
-          return vec3(direction, direction, direction);
+          strength = logScale(strength*1000.0);
+          return vec3(-min(direction-0.5, 0.0)+strength, strength, max(direction-0.5, 0.0)+strength);
       }
 
       highp vec3 multiples() {
           highp float amplitude = 0.0;
           for (int m=1; m<10; m++) {
-              highp float x = vTextureCoord.x*float(m);
-              if (x<1.0) {
-                  amplitude += texture2D(uSampler, vec2(x, vTextureCoord.y)).r;
+              highp float y = vTextureCoord.y*float(m);
+              if (y<1.0) {
+                  amplitude += texture2D(uSampler, vec2(vTextureCoord.x, y)).r;
               }
           }
-          amplitude /= floor(1.0/vTextureCoord.x);
-          amplitude = 20.0*log(amplitude)/log(10.0);
-          amplitude = max(amplitude, vAmpRange[0]);
-          amplitude = min(amplitude, vAmpRange[1]);
-          amplitude = (amplitude - vAmpRange[0]) / (vAmpRange[1] - vAmpRange[0]);
+          amplitude /= floor(1.0/vTextureCoord.y);
+          amplitude = logScale(amplitude);
           return physicalColor(amplitude);
       }
 
       void main() {
           if (uSpecMode == 0) {
-              gl_FragColor = vec4(normalMode(), 1.0);
+              gl_FragColor = vec4(physicalMode(), 1.0);
           } else if (uSpecMode == 1) {
-              gl_FragColor = vec4(direction(), 1.0);
+              gl_FragColor = vec4(normalMode(), 1.0);
           } else if (uSpecMode == 2) {
+              gl_FragColor = vec4(direction(), 1.0);
+          } else if (uSpecMode == 3) {
               gl_FragColor = vec4(multiples(), 1.0);
           }
       }

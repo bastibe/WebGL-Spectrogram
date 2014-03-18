@@ -198,8 +198,8 @@ function loadSpectrogram(data, nblocks, nfreqs, fs, length) {
     gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
     var textureCoordinates = new Float32Array([
         1.0, 1.0,
-        0.0, 1.0,
         1.0, 0.0,
+        0.0, 1.0,
         0.0, 0.0
     ]);
     gl.bufferData(gl.ARRAY_BUFFER, textureCoordinates, gl.STATIC_DRAW);
@@ -224,6 +224,12 @@ function loadSpectrogram(data, nblocks, nfreqs, fs, length) {
         // fill textures with spectrogram data
         var blocks = ((i+1) < numTextures) ? maxTexSize : (numTextures%1)*maxTexSize;
         var chunk = data.subarray(i*maxTexSize*nfreqs, (i*maxTexSize+blocks)*nfreqs);
+        var tmp = Float32Array(chunk.length);
+        for (var x=0; x<blocks; x++) {
+            for (var y=0; y<nfreqs; y++) {
+                tmp[x+blocks*y] = chunk[y+nfreqs*x];
+            }
+        }
         spectrogramTextures[i] = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, spectrogramTextures[i]);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, blocks, nfreqs, 0, gl.LUMINANCE, gl.FLOAT, tmp);
@@ -486,11 +492,13 @@ specView.onmousemove = function(mouse) {
 
 function spectrogramMode(mode) {
     /* convert string spectrogram mode to integer */
-    if (mode === 'normal') {
+    if (mode === 'physical') {
         return 0;
-    } else if (mode === 'direction') {
+    } else if (mode === 'normal') {
         return 1;
-    } else if (mode === 'multiple') {
+    } else if (mode === 'direction') {
         return 2;
+    } else if (mode === 'multiple') {
+        return 3;
     }
 }
