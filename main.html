@@ -46,6 +46,10 @@
         margin-top: 200px;
         width: 200px;
       }
+      label {
+        margin-left: 20px;
+        font: 12px sans-serif;
+      }
     </style>
   </head>
   <body onload="start()">
@@ -58,16 +62,16 @@
           <option>128</option>
           <option>256</option>
           <option>512</option>
-          <option selected="selected">1024</option>
+          <option selected>1024</option>
           <option>2048</option>
           <option>4096</option>
         </select>
         <label for="specMode">Mode:</label>
         <select id="specMode" name="specMode" onchange="window.requestAnimationFrame(drawScene)">
-          <option selected="selected">physical</option>
-          <option>normal</option>
-          <option>direction</option>
-          <option>multiple</option>
+          <option value="0" selected>physical</option>
+          <option value="1">normal</option>
+          <option value="2">direction</option>
+          <option value="3">multiple</option>
         </select>
         <label for="specInterpolation">Interpolate</label>
         <input id="specInterpolation" type="checkbox" onchange="window.requestAnimationFrame(drawScene)">

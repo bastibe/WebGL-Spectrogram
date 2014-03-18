@@ -278,7 +278,7 @@ function drawSpectrogram() {
     // set the size of the spectrogram
     gl.uniform2f(specSizeUniform, specSize.numT, specSize.numF);
     // set the spectrogram display mode
-    var specMode = spectrogramMode(document.getElementById('specMode').value);
+    var specMode = document.getElementById('specMode').value;
     gl.uniform1i(specModeUniform, specMode);
 
     // switch interpolation on or off
@@ -488,17 +488,4 @@ specView.onmousemove = function(mouse) {
     specDataView.innerHTML = formatTime(t) + ", " + formatFrequency(f) + "<br/>" +
         specViewSize.centerA().toFixed(2) + " dB " +
         "&plusmn; " + (specViewSize.widthA()/2).toFixed(2) + " dB" ;
-}
-
-function spectrogramMode(mode) {
-    /* convert string spectrogram mode to integer */
-    if (mode === 'physical') {
-        return 0;
-    } else if (mode === 'normal') {
-        return 1;
-    } else if (mode === 'direction') {
-        return 2;
-    } else if (mode === 'multiple') {
-        return 3;
-    }
 }
