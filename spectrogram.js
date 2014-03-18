@@ -224,7 +224,7 @@ function loadSpectrogram(data, nblocks, nfreqs, fs, length) {
         // fill textures with spectrogram data
         var blocks = ((i+1) < numTextures) ? maxTexSize : (numTextures%1)*maxTexSize;
         var chunk = data.subarray(i*maxTexSize*nfreqs, (i*maxTexSize+blocks)*nfreqs);
-        var tmp = Float32Array(chunk.length);
+        var tmp = new Float32Array(chunk.length);
         for (var x=0; x<blocks; x++) {
             for (var y=0; y<nfreqs; y++) {
                 tmp[x+blocks*y] = chunk[y+nfreqs*x];
