@@ -489,3 +489,18 @@ specView.onmousemove = function(mouse) {
         specViewSize.centerA().toFixed(2) + " dB " +
         "&plusmn; " + (specViewSize.widthA()/2).toFixed(2) + " dB" ;
 }
+
+window.onkeypress = function(event) {
+    /* update spectrogram display mode on keypress */
+    if (event.key === 'p') {
+        var specMode = 0;
+    } else if (event.key === 'n') {
+        var specMode = 1;
+    } else if (event.key === 'd') {
+        var specMode = 2;
+    } else if (event.key === 'm') {
+        var specMode = 3;
+    }
+    document.getElementById('specMode').value = specMode;
+    window.requestAnimationFrame(drawScene);
+}
