@@ -12,7 +12,9 @@ var samplerUniform;
 var ampRangeUniform;
 var zoomUniform;
 var specSizeUniform;
+var specDataSizeUniform;
 var specModeUniform;
+var specLogarithmicUniform;
 
 var vertexPositionBuffers;
 var textureCoordBuffer;
@@ -119,7 +121,9 @@ function loadSpectrogramShaders() {
     zoomUniform = gl.getUniformLocation(shaderProgram, 'mZoom');
     ampRangeUniform = gl.getUniformLocation(shaderProgram, 'vAmpRange');
     specSizeUniform = gl.getUniformLocation(shaderProgram, 'vSpecSize');
+    specDataSizeUniform = gl.getUniformLocation(shaderProgram, 'vDataSize');
     specModeUniform = gl.getUniformLocation(shaderProgram, 'uSpecMode');
+    specLogarithmicUniform = gl.getUniformLocation(shaderProgram, 'bSpecLogarithmic');
 }
 
 function getShader(id) {
@@ -276,10 +280,13 @@ function drawSpectrogram() {
     // set the current amplitude range to display
     gl.uniform2f(ampRangeUniform, specViewSize.minA, specViewSize.maxA);
     // set the size of the spectrogram
-    gl.uniform2f(specSizeUniform, specSize.numT, specSize.numF);
+    gl.uniform2f(specSizeUniform, specSize.widthT(), specSize.widthF());
+    gl.uniform2f(specDataSizeUniform, specSize.numT, specSize.numF);
     // set the spectrogram display mode
     var specMode = document.getElementById('specMode').value;
     gl.uniform1i(specModeUniform, specMode);
+    var specLogarithmic = document.getElementById('specLogarithmic').checked;
+    gl.uniform1i(specLogarithmicUniform, specLogarithmic);
 
     // switch interpolation on or off
     var interpolate = document.getElementById('specInterpolation').checked;
@@ -354,8 +361,12 @@ function formatFrequency(frequency) {
        frequency  a frequency in Hz.
 
        returns a formatted string with the frequency in Hz or kHz,
-         with an appropriate number of decimals.
+         with an appropriate number of decimals. If logarithmic
+         frequency is enabled, the returned frequency will be
+         appropriately distorted.
     */
+
+    frequency = document.getElementById('specLogarithmic').checked ? freqLin2Log(frequency) : frequency;
 
     if (frequency < 10) {
         return frequency.toFixed(2) + " Hz";
@@ -473,6 +484,10 @@ specView.onwheel = function(wheel) {
     wheel.preventDefault();
     specView.onmousemove(wheel);
     window.requestAnimationFrame(drawScene);
+}
+
+function freqLin2Log(f) {
+    return Math.pow(specSize.widthF(), f/specSize.widthF());
 }
 
 specView.onmousemove = function(mouse) {
