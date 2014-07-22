@@ -1,5 +1,20 @@
-var ws = new WebSocket("ws://localhost:8888/spectrogram");
+var ws = new WebSocket("ws://localhost:" + getURLParameters()['port'] + "/spectrogram");
 ws.binaryType = 'arraybuffer';
+
+function getURLParameters() {
+    /* return an object containing the URL parameters */
+
+    var params = {};
+    if (location.search) {
+        var parts = location.search.substring(1).split('&');
+        for (var i=0; i<parts.length; i++) {
+            var pair = parts[i].split('=');
+            if (!pair[0]) continue;
+            params[pair[0]] = pair[1] || "";
+        }
+    }
+    return params
+}
 
 function sendMessage(type, content, payload) {
     /* Send a message.

@@ -3,8 +3,10 @@ import sys
 import io
 import numpy as np
 from tornado.websocket import WebSocketHandler
-from scipy.signal import hann
 from pysoundfile import SoundFile
+
+def hann(n):
+    return 0.5 - 0.5 * np.cos(2.0 * np.pi * np.arange(n)/(n-1))
 
 class JSONWebSocket(WebSocketHandler):
     """A websocket that sends/receives JSON messages.
@@ -207,9 +209,12 @@ if __name__ == "__main__":
     import webbrowser
     from tornado.web import Application
     from tornado.ioloop import IOLoop
+    import random
 
     app = Application([ ("/spectrogram", SpectrogramWebSocket) ])
 
-    app.listen(8888)
-    webbrowser.open('file://{}/main.html'.format(os.getcwd()))
+    random.seed()
+    port = random.randrange(49152, 65535)
+    app.listen(port)
+    webbrowser.open('file://{}/main.html?port={}'.format(os.getcwd(), port))
     IOLoop.instance().start()
