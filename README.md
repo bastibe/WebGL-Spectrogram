@@ -1,9 +1,11 @@
 WebGL-Spectrogram
 =================
 
-This is a small local web app that displays a spectrogram of an audio signal in the browser using WebGL. It is known to work with Firefox and Chrome, though performance is best in Firefox. In order to run the server, you need to have tornado, numpy and scipy installed.
+This is a small local web app that displays a spectrogram of an audio signal in the browser using WebGL. It is known to work with Firefox and Chrome, though performance is best in Firefox. In order to run the server, you need to have Python, tornado, numpy and scipy installed.
 
 The spectrogram display can be zoomed and panned smoothly and has a configurable FFT length. The amplitude range can be adjusted on the fly as well. It can open any local _*.wav_ or _*.flac_ file.
+
+![screenshot](https://raw.githubusercontent.com/bastibe/WebGL-Spectrogram/master/screenshot.png)
 
 *server.py* contains a small web server written in Python and Tornado that responds to messages on `ws://localhost:XXXX/spectrogram`, where `XXXX` is a random port in the local range. Currently, it supports two kinds of messages: One that requests a spectrogram from a file name, and another that requests a spectrogram from a file content attached to the message. It responds to these messages with a message containing a full spectrogram for the given audio file. 
 
