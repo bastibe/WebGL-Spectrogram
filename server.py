@@ -1,7 +1,6 @@
 import io
 import json
 import struct
-import sys
 import numpy as np
 
 from tornado.websocket import WebSocketHandler

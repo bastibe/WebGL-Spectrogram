@@ -1,4 +1,4 @@
-.PHONY: clean run
+.PHONY: clean run installdeps lint
 
 OS := $(shell uname)
 

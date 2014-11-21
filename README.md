@@ -8,8 +8,11 @@ First, check out WebGL-Spectrogram and launch it locally:
 ```bash
 git clone https://github.com/joshblum/WebGL-Spectrogram.git
 cd WebGL-Spectrogram
-make installdeps # install common packages, for OSX or Linux
-make run # run the local server
+
+# Installs common packages for OSX or Linux.
+# You need to use sudo if you are not working in a virtualenv
+make installdeps
+make run
 ```
 
 A webpage should now open and you can select the file `example.wav` to generate a sample spectrogram.
