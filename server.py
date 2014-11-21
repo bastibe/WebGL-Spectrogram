@@ -78,9 +78,9 @@ class JSONWebSocket(WebSocketHandler):
       print('message {} is not a valid JSON object'.format(msg))
       return
 
-    if not 'type' in header:
+    if 'type' not in header:
       print('message {} does not have a "type" field'.format(header))
-    elif not 'content' in header:
+    elif 'content' not in header:
       print('message {} does not have a "content" field'.format(header))
     else:
       self.receive_message(header['type'], header['content'], data)
@@ -155,7 +155,7 @@ class SpectrogramWebSocket(JSONWebSocket):
     spec = self.spectrogram(sound, nfft, overlap)
 
     self.send_message('spectrogram',
-                      {'extent': data.shape,
+                      {'extent': spec.shape,
                        'fs': file.sample_rate,
                        'length': len(file) / file.sample_rate},
                       spec.tostring())
@@ -201,7 +201,8 @@ class SpectrogramWebSocket(JSONWebSocket):
     window = hann(nfft)
     for idx in range(num_blocks):
       specs[:, idx] = np.abs(
-          np.fft.rfft(data[idx * shift:idx * shift + nfft] * window, n=nfft)) / nfft
+          np.fft.rfft(
+              data[idx * shift:idx * shift + nfft] * window, n=nfft)) / nfft
       if idx % 10 == 0:
         self.send_message("loading_progress", {"progress": idx / num_blocks})
     specs[
