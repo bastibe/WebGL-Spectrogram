@@ -13,6 +13,7 @@ installdeps:
 ifeq ('$(OS)','Darwin')
 	# Run MacOS commands
 	cat packages-osx.txt | xargs brew install
+	export PKG_CONFIG_PATH=/usr/local/Cellar/libffi/3.0.13/lib/pkgconfig/
 else
 	# Run Linux commands
 	cat packages.txt | xargs sudo apt-get -y install

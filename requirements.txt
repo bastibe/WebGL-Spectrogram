@@ -6,4 +6,3 @@ numpy==1.9.1
 pycparser==2.10
 scipy==0.14.0
 tornado==4.0.2
-wsgiref==0.1.2

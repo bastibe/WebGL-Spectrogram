@@ -1,13 +1,23 @@
-import json
-import sys
 import io
+import json
+import struct
+import sys
 import numpy as np
+
 from tornado.websocket import WebSocketHandler
 from pysoundfile import SoundFile
 
 
 def hann(n):
   return 0.5 - 0.5 * np.cos(2.0 * np.pi * np.arange(n) / (n - 1))
+
+
+def from_bytes(b):
+  return struct.unpack("<i", b)[0]
+
+
+def to_bytes(n):
+  return struct.pack("<i", n)
 
 
 class JSONWebSocket(WebSocketHandler):
@@ -24,6 +34,9 @@ class JSONWebSocket(WebSocketHandler):
   The binary data will be stored 8-byte aligned.
 
   """
+
+  def check_origin(self, origin):
+    return True
 
   def open(self):
     print("WebSocket opened")
@@ -49,7 +62,7 @@ class JSONWebSocket(WebSocketHandler):
       # the header, encoded as a 32 bit signed integer:
       header += b' ' * (8 - ((len(header) + 4) % 8))
       # the length of the header as a binary 32 bit signed integer:
-      prefix = len(header).to_bytes(4, sys.byteorder)
+      prefix = to_bytes(len(header))
       self.write_message(prefix + header + data, binary=True)
 
   def on_message(self, msg):
@@ -65,7 +78,7 @@ class JSONWebSocket(WebSocketHandler):
     """
 
     if isinstance(msg, bytes):
-      header_len = int.from_bytes(msg[:4], byteorder=sys.byteorder)
+      header_len = from_bytes(msg[:4])
       header = msg[4:header_len + 4].decode()
       data = msg[4 + header_len:]
     else:
@@ -155,7 +168,7 @@ class SpectrogramWebSocket(JSONWebSocket):
     spec = self.spectrogram(sound, nfft, overlap)
 
     self.send_message('spectrogram',
-                      {'extent': spec.shape,
+                      {'extent': sound.shape,
                        'fs': file.sample_rate,
                        'length': len(file) / file.sample_rate},
                       spec.tostring())
@@ -196,7 +209,7 @@ class SpectrogramWebSocket(JSONWebSocket):
     """
 
     shift = round(nfft * overlap)
-    num_blocks = (len(data) - nfft) // shift + 1
+    num_blocks = int((len(data) - nfft) / shift + 1)
     specs = np.zeros((nfft / 2 + 1, num_blocks), dtype=np.float32)
     window = hann(nfft)
     for idx in range(num_blocks):
