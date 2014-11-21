@@ -1,0 +1,17 @@
+argparse==1.2.1
+autopep8==1.0.3
+flake8==2.2.3
+gnureadline==6.3.3
+ipython==2.2.0
+mccabe==0.2.1
+mercurial==3.1
+pbr==0.10.0
+pep8==1.5.7
+pyflakes==0.8.1
+requests==2.4.3
+six==1.8.0
+stevedore==1.1.0
+virtualenv==1.11.6
+virtualenv-clone==0.2.5
+virtualenvwrapper==4.2
+wsgiref==0.1.2
