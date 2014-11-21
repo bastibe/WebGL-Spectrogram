@@ -12,11 +12,11 @@ def hann(n):
 
 
 def from_bytes(b):
-  return struct.unpack("<i", b)[0]
+  return struct.unpack("@i", b)[0]
 
 
 def to_bytes(n):
-  return struct.pack("<i", n)
+  return struct.pack("@i", n)
 
 
 class JSONWebSocket(WebSocketHandler):
