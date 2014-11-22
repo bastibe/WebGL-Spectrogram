@@ -2,6 +2,12 @@
 
 OS := $(shell uname)
 
+ifeq ($(RPM),1)
+	PKG_INSTALLER = yum
+else
+	PKG_INSTALLER = apt-get
+endif
+
 run:
 	python server.py
 
@@ -16,7 +22,7 @@ ifeq ('$(OS)','Darwin')
 	export PKG_CONFIG_PATH=/usr/local/Cellar/libffi/3.0.13/lib/pkgconfig/
 else
 	# Run Linux commands
-	cat packages.txt | xargs sudo apt-get -y install
+	cat packages.txt | xargs sudo $(PKG_INSTALLER) -y install
 endif
 	pip install -r requirements.txt
 
