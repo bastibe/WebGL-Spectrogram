@@ -215,12 +215,14 @@ class SpectrogramWebSocket(JSONWebSocket):
         for idx in range(num_blocks):
             specs[:, idx] = np.abs(
                 np.fft.rfft(
-                    data[idx * shift:idx * shift + nfft] * window, n=nfft)) / nfft
+                    data[idx * shift:idx * shift + nfft] * window,
+                    n=nfft)) / nfft
             if idx % 10 == 0:
                 self.send_message(
                     "loading_progress", {"progress": idx / num_blocks})
         specs[
-            :, -1] = np.abs(np.fft.rfft(data[num_blocks * shift:], n=nfft)) / nfft
+            :, -1] = np.abs(
+            np.fft.rfft(data[num_blocks * shift:], n=nfft)) / nfft
         self.send_message("loading_progress", {"progress": 1})
         return specs.T
 
