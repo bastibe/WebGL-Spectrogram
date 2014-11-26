@@ -274,9 +274,9 @@ function drawSpectrogram() {
     var zoomX = specSize.widthT() / specViewSize.widthT();
     var zoomY = specSize.widthF() / specViewSize.widthF();
     var zoomMatrix = [
-        zoomX, 0.0, -2 * panX * zoomX,
-        0.0, zoomY, -2 * panY * zoomY,
-        0.0, 0.0, 1.0
+        zoomX, 0.0,   -2 * panX * zoomX,
+        0.0,   zoomY, -2 * panY * zoomY,
+        0.0,   0.0,   1.0
     ];
     gl.uniformMatrix3fv(zoomUniform, gl.FALSE, zoomMatrix);
 

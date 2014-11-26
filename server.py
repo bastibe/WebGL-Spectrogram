@@ -220,8 +220,7 @@ class SpectrogramWebSocket(JSONWebSocket):
             if idx % 10 == 0:
                 self.send_message(
                     "loading_progress", {"progress": idx / num_blocks})
-        specs[
-            :, -1] = np.abs(
+        specs[:, -1] = np.abs(
             np.fft.rfft(data[num_blocks * shift:], n=nfft)) / nfft
         self.send_message("loading_progress", {"progress": 1})
         return specs.T
