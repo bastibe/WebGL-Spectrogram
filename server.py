@@ -168,7 +168,7 @@ class SpectrogramWebSocket(JSONWebSocket):
         spec = self.spectrogram(sound, nfft, overlap)
 
         self.send_message('spectrogram',
-                          {'extent': sound.shape,
+                          {'extent': spec.shape,
                            'fs': file.sample_rate,
                            'length': len(file) / file.sample_rate},
                           spec.tostring())
