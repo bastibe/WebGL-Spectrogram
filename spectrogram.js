@@ -505,16 +505,23 @@ specView.onmousemove = function(mouse) {
 }
 
 /* update spectrogram display mode on keypress */
-window.onkeypress = function(event) {
-    if (event.key === 'p') {
-        var specMode = 0;
-    } else if (event.key === 'n') {
-        var specMode = 1;
-    } else if (event.key === 'd') {
-        var specMode = 2;
-    } else if (event.key === 'm') {
-        var specMode = 3;
+window.onkeypress = function(e) {
+    var specMode = -1;
+    if (e.key === 'p') {
+        specMode = 0;
+    } else if (e.key === 'n') {
+        specMode = 1;
+    } else if (e.key === 'd') {
+        specMode = 2;
+    } else if (e.key === 'm') {
+        specMode = 3;
     }
+    // prevent the default action of submitting the GET parameters.
+    e.which = e.which || e.keyCode;
+    if (e.which == 13) {
+      e.preventDefault();
+    }
+
     document.getElementById('specMode').value = specMode;
     window.requestAnimationFrame(drawScene);
 }

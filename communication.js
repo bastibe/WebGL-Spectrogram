@@ -147,6 +147,15 @@ ws.onopen = function() {
     reloadSpectrogram();
 }
 
+/* Test the keyup event for a submission and then reload the spectrogram.
+ */
+function submitSpectrogram(e) {
+    e.which = e.which || e.keyCode;
+    if (e.which == 13) {
+        reloadSpectrogram();
+    }
+}
+
 /* Loads the spectrogram for the currently seleced file/FFT-length.
 
    Reads the audioFile input field to get the current file and the
@@ -155,17 +164,25 @@ ws.onopen = function() {
    This only sends the request for a spectrogram. Delivering the
    spectrogram is up to the server.
 */
-
 function reloadSpectrogram() {
-    var audioFile = document.getElementById('audioFile').files[0];
+    var audioFile = document.getElementById('audioFileByData').files[0];
+    var fftLen = parseFloat(document.getElementById('fftLen').value);
+    // first we try to load a file
+    if (audioFile) {
+        var reader = new FileReader();
+        reader.readAsArrayBuffer(audioFile);
+        reader.onloadend = function() {
+            requestDataSpectrogram(reader.result, fftLen);
+        }
+    } else { // otherwise see if there is a filename
+        audioFile = document.getElementById('audioFileByName').value;
+        if (audioFile) {
+            console.log("Requesting spectrogram for: " + audioFile);
+            requestFileSpectrogram(audioFile, fftLen);
+        }
+    }
     if (!audioFile) {
         console.log("Could not load spectrogram: No file selected");
         return;
-    }
-    var reader = new FileReader();
-    reader.readAsArrayBuffer(audioFile);
-    reader.onloadend = function() {
-        var fftLen = parseFloat(document.getElementById('fftLen').value);
-        requestDataSpectrogram(reader.result, fftLen)
     }
 }

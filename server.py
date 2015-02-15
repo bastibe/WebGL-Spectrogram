@@ -162,16 +162,22 @@ class SpectrogramWebSocket(JSONWebSocket):
         overlap   the amount of overlap between consecutive spectra.
 
         """
+        try:
+            file = SoundFile(filename)
+            sound = file[:].sum(axis=1)
+            spec = self.spectrogram(sound, nfft, overlap)
 
-        file = SoundFile(filename)
-        sound = file[:].sum(axis=1)
-        spec = self.spectrogram(sound, nfft, overlap)
-
-        self.send_message('spectrogram',
-                          {'extent': spec.shape,
-                           'fs': file.sample_rate,
-                           'length': len(file) / file.sample_rate},
-                          spec.tostring())
+            self.send_message('spectrogram',
+                              {'extent': spec.shape,
+                               'fs': file.sample_rate,
+                               'length': len(file) / file.sample_rate},
+                              spec.tostring())
+        except RuntimeError: # filename incorrect
+            error_msg = 'Filename: {} could not be loaded'.format(filename)
+            self.send_message('error', {
+                'error_msg': error_msg
+            })
+            print(error_msg)
 
     def on_data_spectrogram(self, data, nfft=1024, overlap=0.5):
         """Loads an audio file and calculates a spectrogram.
