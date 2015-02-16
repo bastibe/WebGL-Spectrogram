@@ -169,8 +169,8 @@ class SpectrogramWebSocket(JSONWebSocket):
 
             self.send_message('spectrogram',
                               {'extent': spec.shape,
-                               'fs': file.sample_rate,
-                               'length': len(file) / file.sample_rate},
+                               'fs': file.samplerate,
+                               'length': len(file) / file.samplerate},
                               spec.tostring())
         except RuntimeError as e:
             error_msg = 'Filename: {} could not be loaded.\n{}'.format(filename, e)
@@ -189,14 +189,14 @@ class SpectrogramWebSocket(JSONWebSocket):
 
         """
 
-        file = SoundFile(io.BytesIO(data), virtual_io=True)
+        file = SoundFile(io.BytesIO(data))
         sound = file[:].sum(axis=1)
         spec = self.spectrogram(sound, nfft, overlap)
 
         self.send_message('spectrogram',
                           {'extent': spec.shape,
-                           'fs': file.sample_rate,
-                           'length': len(file) / file.sample_rate},
+                           'fs': file.samplerate,
+                           'length': len(file) / file.samplerate},
                           spec.tostring())
 
     def spectrogram(self, data, nfft, overlap):
