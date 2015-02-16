@@ -172,8 +172,8 @@ class SpectrogramWebSocket(JSONWebSocket):
                                'fs': file.sample_rate,
                                'length': len(file) / file.sample_rate},
                               spec.tostring())
-        except RuntimeError: # filename incorrect
-            error_msg = 'Filename: {} could not be loaded'.format(filename)
+        except RuntimeError as e:
+            error_msg = 'Filename: {} could not be loaded.\n{}'.format(filename, e)
             self.send_message('error', {
                 'error_msg': error_msg
             })
