@@ -518,7 +518,7 @@ window.onkeypress = function(e) {
     }
     // prevent the default action of submitting the GET parameters.
     e.which = e.which || e.keyCode;
-    if (e.which == 13) {
+    if (e.which === 13) {
       e.preventDefault();
     }
 
