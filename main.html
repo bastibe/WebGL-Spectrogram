@@ -55,8 +55,10 @@
   <body onload="start()">
     <div id="metadata">
       <form>
-        <label for="audioFile">File:</label>
-        <input id="audioFile" name="audioFile" type="file" accept="audio/*" onchange="reloadSpectrogram()">
+        <label for="audioFileByData">File:</label>
+        <input id="audioFileByData" name="audioFileByData" type="file" accept="audio/*" onchange="reloadSpectrogram()">
+        <input id="audioFileByName" name="audioFileByName" type="text" onkeyup="submitSpectrogram(event)">
+        <input id="audioFileNameSubmit" type="button" value="Submit" onclick="reloadSpectrogram()">
         <label for="fftLen">NFFT:</label>
         <select id="fftLen" name="fftLen" onchange="reloadSpectrogram()">
           <option>128</option>

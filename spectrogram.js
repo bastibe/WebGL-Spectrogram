@@ -25,7 +25,7 @@ var textureCoordBuffer;
 // textures objects
 var spectrogramTextures;
 
-var specSize;     // total size of the spectrogram
+var specSize; // total size of the spectrogram
 var specViewSize; // visible size of the spectrogram
 
 /* initialize all canvases */
@@ -142,7 +142,7 @@ function getShader(id) {
 
     if (script.type == "x-shader/x-fragment") {
         var shader = gl.createShader(gl.FRAGMENT_SHADER);
-    } else if  (script.type == "x-shader/x-vertex") {
+    } else if (script.type == "x-shader/x-vertex") {
         var shader = gl.createShader(gl.VERTEX_SHADER);
     } else {
         return null;
@@ -211,33 +211,33 @@ function loadSpectrogram(data, nblocks, nfreqs, fs, length) {
     gl.bufferData(gl.ARRAY_BUFFER, textureCoordinates, gl.STATIC_DRAW);
 
     // for every texture, calculate vertex indices and texture content
-    for (var i=0; i<numTextures; i++) {
+    for (var i = 0; i < numTextures; i++) {
         // texture position in 0..1:
-        var minX = i/numTextures;
-        var maxX = ((i+1) < numTextures) ? (i+1)/numTextures : 1;
+        var minX = i / numTextures;
+        var maxX = ((i + 1) < numTextures) ? (i + 1) / numTextures : 1;
 
         // calculate vertex positions, scaled to -1..1
         vertexPositionBuffers[i] = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBuffers[i]);
         var vertices = new Float32Array([
-            maxX * 2 - 1,  1.0,
+            maxX * 2 - 1, 1.0,
             maxX * 2 - 1, -1.0,
-            minX * 2 - 1,  1.0,
+            minX * 2 - 1, 1.0,
             minX * 2 - 1, -1.0
         ]);
         gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
 
         // fill textures with spectrogram data
-        var blocks = ((i+1) < numTextures) ? maxTexSize : (numTextures%1)*maxTexSize;
-        var chunk = data.subarray(i*maxTexSize*nfreqs, (i*maxTexSize+blocks)*nfreqs);
+        var blocks = ((i + 1) < numTextures) ? maxTexSize : (numTextures % 1) * maxTexSize;
+        var chunk = data.subarray(i * maxTexSize * nfreqs, (i * maxTexSize + blocks) * nfreqs);
         var tmp = new Float32Array(chunk.length);
-        for (var x=0; x<blocks; x++) {
-            for (var y=0; y<nfreqs; y++) {
-                tmp[x+blocks*y] = chunk[y+nfreqs*x];
+        for (var x = 0; x < blocks; x++) {
+            for (var y = 0; y < nfreqs; y++) {
+                tmp[x + blocks * y] = chunk[y + nfreqs * x];
             }
         }
         spectrogramTextures[i] = gl.createTexture();
-        gl.activeTexture(gl.TEXTURE0+i);
+        gl.activeTexture(gl.TEXTURE0 + i);
         gl.bindTexture(gl.TEXTURE_2D, spectrogramTextures[i]);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -247,10 +247,10 @@ function loadSpectrogram(data, nblocks, nfreqs, fs, length) {
     }
 
     // save spectrogram sizes
-    specSize = new SpecSize(0, length, 0, fs/2);
+    specSize = new SpecSize(0, length, 0, fs / 2);
     specSize.numT = nblocks;
     specSize.numF = nfreqs;
-    specViewSize = new SpecSize(0, length, 0, fs/2, -120, 0);
+    specViewSize = new SpecSize(0, length, 0, fs / 2, -120, 0);
 
     window.requestAnimationFrame(drawScene);
 }
@@ -274,9 +274,9 @@ function drawSpectrogram() {
     var zoomX = specSize.widthT() / specViewSize.widthT();
     var zoomY = specSize.widthF() / specViewSize.widthF();
     var zoomMatrix = [
-        zoomX, 0.0,   -2*panX*zoomX,
-        0.0,   zoomY, -2*panY*zoomY,
-        0.0,   0.0,    1.0
+        zoomX, 0.0,   -2 * panX * zoomX,
+        0.0,   zoomY, -2 * panY * zoomY,
+        0.0,   0.0,   1.0
     ];
     gl.uniformMatrix3fv(zoomUniform, gl.FALSE, zoomMatrix);
 
@@ -295,8 +295,8 @@ function drawSpectrogram() {
     var interpolate = document.getElementById('specInterpolation').checked;
 
     // draw the spectrogram textures
-    for (var i=0; i<spectrogramTextures.length; i++) {
-        gl.activeTexture(gl.TEXTURE0+i);
+    for (var i = 0; i < spectrogramTextures.length; i++) {
+        gl.activeTexture(gl.TEXTURE0 + i);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, interpolate ? gl.LINEAR : gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, interpolate ? gl.LINEAR : gl.NEAREST);
         gl.bindTexture(gl.TEXTURE_2D, spectrogramTextures[i]);
@@ -318,7 +318,7 @@ function drawSpectrogram() {
      hundredths.
 */
 function formatTime(seconds) {
-    var minutes = Math.floor(seconds/60);
+    var minutes = Math.floor(seconds / 60);
     var seconds = seconds % 60;
     minutes = minutes.toString();
     if (minutes.length === 1) {
@@ -342,23 +342,23 @@ function drawSpecTimeScale() {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     // draw axis line and two ticks
     ctx.fillStyle = "black";
-    ctx.fillRect(10, 2, ctx.canvas.width-20, 1);
+    ctx.fillRect(10, 2, ctx.canvas.width - 20, 1);
     ctx.fillRect(10, 2, 1, 5);
-    ctx.fillRect(ctx.canvas.width-10, 3, 1, 5);
+    ctx.fillRect(ctx.canvas.width - 10, 3, 1, 5);
     // draw lower time bound
     ctx.font = "8px sans-serif";
     var text = formatTime(specViewSize.minT);
     var textWidth = ctx.measureText(text).width;
-    ctx.fillText(text, 0, ctx.canvas.height-2);
+    ctx.fillText(text, 0, ctx.canvas.height - 2);
     // draw upper time bound
     var text = formatTime(specViewSize.maxT);
     var textWidth = ctx.measureText(text).width;
-    ctx.fillText(text, ctx.canvas.width-textWidth, ctx.canvas.height-2);
+    ctx.fillText(text, ctx.canvas.width - textWidth, ctx.canvas.height - 2);
 }
 
 /* convert a linear frequency coordinate to logarithmic frequency */
 function freqLin2Log(f) {
-    return Math.pow(specSize.widthF(), f/specSize.widthF());
+    return Math.pow(specSize.widthF(), f / specSize.widthF());
 }
 
 /* format a frequency
@@ -381,9 +381,9 @@ function formatFrequency(frequency) {
     } else if (frequency < 1000) {
         return Math.round(frequency).toString() + " Hz";
     } else if (frequency < 10000) {
-        return (frequency/1000).toFixed(2) + " kHz";
+        return (frequency / 1000).toFixed(2) + " kHz";
     } else {
-        return (frequency/1000).toFixed(1) + " kHz";
+        return (frequency / 1000).toFixed(1) + " kHz";
     }
 }
 
@@ -398,9 +398,9 @@ function drawSpecFrequencyScale() {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     // draw axis line and two ticks
     ctx.fillStyle = "black";
-    ctx.fillRect(2, 10, 1, ctx.canvas.height-20);
+    ctx.fillRect(2, 10, 1, ctx.canvas.height - 20);
     ctx.fillRect(2, 10, 5, 1);
-    ctx.fillRect(2, ctx.canvas.height-10, 5, 1);
+    ctx.fillRect(2, ctx.canvas.height - 10, 5, 1);
     // draw upper frequency bound
     ctx.font = "8px sans-serif";
     var text = formatFrequency(specViewSize.maxF);
@@ -409,7 +409,7 @@ function drawSpecFrequencyScale() {
     // draw lower frequency bound
     var text = formatFrequency(specViewSize.minF);
     var textWidth = ctx.measureText(text).width;
-    ctx.fillText(text, 8, ctx.canvas.height-8);
+    ctx.fillText(text, 8, ctx.canvas.height - 8);
 }
 
 /* zoom or pan when on scrolling
@@ -430,19 +430,19 @@ specView.onwheel = function(wheel) {
     var stepT = specViewSize.widthT() / 100;
     if (wheel.altKey) {
         var center = specViewSize.centerA();
-        var range  = specViewSize.widthA();
-        range += wheel.shiftKey ? wheel.deltaY/10 : wheel.deltaX/10;
+        var range = specViewSize.widthA();
+        range += wheel.shiftKey ? wheel.deltaY / 10 : wheel.deltaX / 10;
         range = Math.max(range, 1);
-        center += wheel.shiftKey ? wheel.deltaX/10 : wheel.deltaY/10;
-        specViewSize.minA = center-range/2;
-        specViewSize.maxA = center+range/2;
+        center += wheel.shiftKey ? wheel.deltaX / 10 : wheel.deltaY / 10;
+        specViewSize.minA = center - range / 2;
+        specViewSize.maxA = center + range / 2;
     } else if (wheel.ctrlKey) {
         var deltaT = wheel.deltaY * stepT;
-        if (specViewSize.widthT() + 2*deltaT > specSize.widthT()) {
+        if (specViewSize.widthT() + 2 * deltaT > specSize.widthT()) {
             deltaT = (specSize.widthT() - specViewSize.widthT()) / 2;
         }
         var deltaF = wheel.shiftKey ? 0 : wheel.deltaY * stepF;
-        if (specViewSize.widthF() + 2*deltaF > specSize.widthF()) {
+        if (specViewSize.widthF() + 2 * deltaF > specSize.widthF()) {
             deltaF = (specSize.widthF() - specViewSize.widthF()) / 2;
         }
         specViewSize.minF -= deltaF;
@@ -466,14 +466,14 @@ specView.onwheel = function(wheel) {
             specViewSize.maxF += specSize.maxF - specViewSize.maxF;
         }
     } else {
-        var deltaT = (wheel.shiftKey ? -wheel.deltaY : wheel.deltaX) * stepT/10;
+        var deltaT = (wheel.shiftKey ? -wheel.deltaY : wheel.deltaX) * stepT / 10;
         if (specViewSize.maxT + deltaT > specSize.maxT) {
             deltaT = specSize.maxT - specViewSize.maxT;
         }
         if (specViewSize.minT + deltaT < specSize.minT) {
             deltaT = specSize.minT - specViewSize.minT;
         }
-        var deltaF = (wheel.shiftKey ? wheel.deltaX : -wheel.deltaY) * stepF/10;
+        var deltaF = (wheel.shiftKey ? wheel.deltaX : -wheel.deltaY) * stepF / 10;
         if (specViewSize.maxF + deltaF > specSize.maxF) {
             deltaF = specSize.maxF - specViewSize.maxF;
         }
@@ -497,24 +497,31 @@ specView.onwheel = function(wheel) {
    moved on the spectrogram.
 */
 specView.onmousemove = function(mouse) {
-    var t = specViewSize.scaleT(mouse.layerX/specView.clientWidth);
-    var f = specViewSize.scaleF(1-mouse.layerY/specView.clientHeight);
+    var t = specViewSize.scaleT(mouse.layerX / specView.clientWidth);
+    var f = specViewSize.scaleF(1 - mouse.layerY / specView.clientHeight);
     specDataView.innerHTML = formatTime(t) + ", " + formatFrequency(f) + "<br/>" +
         specViewSize.centerA().toFixed(2) + " dB " +
-        "&plusmn; " + (specViewSize.widthA()/2).toFixed(2) + " dB" ;
+        "&plusmn; " + (specViewSize.widthA() / 2).toFixed(2) + " dB";
 }
 
 /* update spectrogram display mode on keypress */
-window.onkeypress = function(event) {
-    if (event.key === 'p') {
-        var specMode = 0;
-    } else if (event.key === 'n') {
-        var specMode = 1;
-    } else if (event.key === 'd') {
-        var specMode = 2;
-    } else if (event.key === 'm') {
-        var specMode = 3;
+window.onkeypress = function(e) {
+    var specMode = -1;
+    if (e.key === 'p') {
+        specMode = 0;
+    } else if (e.key === 'n') {
+        specMode = 1;
+    } else if (e.key === 'd') {
+        specMode = 2;
+    } else if (e.key === 'm') {
+        specMode = 3;
     }
+    // prevent the default action of submitting the GET parameters.
+    e.which = e.which || e.keyCode;
+    if (e.which === 13) {
+      e.preventDefault();
+    }
+
     document.getElementById('specMode').value = specMode;
     window.requestAnimationFrame(drawScene);
 }

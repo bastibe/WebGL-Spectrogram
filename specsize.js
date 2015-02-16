@@ -25,17 +25,17 @@ SpecSize.prototype.widthA = function() {
 
 /* the center in time */
 SpecSize.prototype.centerT = function() {
-    return (this.minT + this.maxT)/2;
+    return (this.minT + this.maxT) / 2;
 }
 
 /* the center in frequency */
 SpecSize.prototype.centerF = function() {
-    return (this.minF + this.maxF)/2;
+    return (this.minF + this.maxF) / 2;
 }
 
 /* the center in amplitude */
 SpecSize.prototype.centerA = function() {
-    return (this.minA + this.maxA)/2;
+    return (this.minA + this.maxA) / 2;
 }
 
 /* the relative position of a time */
