@@ -152,8 +152,8 @@ class SpectrogramWebSocket(JSONWebSocket):
 
         self.send_message('spectrogram',
                           {'extent': data.shape,
-                           'fs': file.sample_rate,
-                           'length': len(file)/file.sample_rate},
+                           'fs': file.samplerate,
+                           'length': len(file)/file.samplerate},
                           spec.tostring())
 
     def on_data_spectrogram(self, data, nfft=1024, overlap=0.5):
@@ -166,14 +166,14 @@ class SpectrogramWebSocket(JSONWebSocket):
 
         """
 
-        file = SoundFile(io.BytesIO(data), virtual_io=True)
+        file = SoundFile(io.BytesIO(data))
         sound = file[:].sum(axis=1)
         spec = self.spectrogram(sound, nfft, overlap)
 
         self.send_message('spectrogram',
                           {'extent': spec.shape,
-                           'fs': file.sample_rate,
-                           'length': len(file)/file.sample_rate},
+                           'fs': file.samplerate,
+                           'length': len(file) / file.samplerate},
                           spec.tostring())
 
     def spectrogram(self, data, nfft, overlap):
