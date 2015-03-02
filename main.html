@@ -99,6 +99,22 @@
       uniform bool bSpecLogarithmic;
 
       highp vec3 physicalColor(highp float amplitude) {
+        /*
+          The physical color scaling is partitioning the full [0 ... 1] range into
+          seven evenly spaced sub-ranges. That's what the modulo and floor are
+          doing. Then, each range modifies only one color channel while keeping
+          the other two constant. This is done in such a way that no two
+          different values map to the same color.
+
+          The ranges are:
+          1. black (0,0,0) to red (1,0,0)
+          2. red (1,0,0) to yellow (1,1,0)
+          3. yellow (1,1,0) to green (0,1,0)
+          4. green (0,1,0) to cyan (0,1,1)
+          5. cyan (0,1,1) to blue (0,0,1)
+          6. blue (0,0,1) to magenta (1,0,1)
+          7. magenta (1,0,1) to white (1,1,1)
+        */
           highp float fractional = mod(amplitude*8.0, 1.0);
           highp float integer = floor(amplitude*8.0);
           if (integer == 0.0) {
