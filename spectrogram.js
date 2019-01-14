@@ -1,7 +1,7 @@
-var specView = document.getElementById('spectrogram');
-var specTimeScale = document.getElementById('specTimeScale');
-var specFrequencyScale = document.getElementById('specFreqScale');
-var specDataView = document.getElementById('specDataView');
+var specView;
+var specTimeScale;
+var specFrequencyScale;
+var specDataView;
 
 var gl; // the WebGL instance
 
@@ -30,9 +30,14 @@ var specViewSize; // visible size of the spectrogram
 
 /* initialize all canvases */
 function start() {
+    specView = document.getElementById('spectrogram');
+    specTimeScale = document.getElementById('specTimeScale');
+    specFrequencyScale = document.getElementById('specFreqScale');
+    specDataView = document.getElementById('specDataView');
     initSpectrogram();
     window.addEventListener("resize", updateCanvasResolutions, false);
     updateCanvasResolutions();
+    eventsInit()
 }
 
 /* set resolution of all canvases to native resolution */
@@ -176,11 +181,21 @@ function getShader(id) {
    nfreqs     the height of the data, the number of frequency bins.
    fs         the sample rate of the audio data.
    length     the length of the audio data in seconds.
+   dB         an amplitude - {min,max}
 */
-function loadSpectrogram(data, nblocks, nfreqs, fs, length) {
+function loadSpectrogram(data, nblocks, nfreqs, fs, length, db = undefined) {
     // calculate the number of textures needed
     var maxTexSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
     var numTextures = nblocks / maxTexSize;
+    var currentDB;
+    if (db)
+    {
+        currentDB = db;
+    }
+    else
+    {
+        currentDB = {'min':-120,'max':0}
+    }
 
     // bail if too big for video memory
     if (Math.ceil(numTextures) > gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS)) {
@@ -250,7 +265,7 @@ function loadSpectrogram(data, nblocks, nfreqs, fs, length) {
     specSize = new SpecSize(0, length, 0, fs / 2);
     specSize.numT = nblocks;
     specSize.numF = nfreqs;
-    specViewSize = new SpecSize(0, length, 0, fs / 2, -120, 0);
+    specViewSize = new SpecSize(0, length, 0, fs / 2, currentDB['min'], currentDB['max']);
 
     window.requestAnimationFrame(drawScene);
 }
@@ -381,9 +396,17 @@ function formatFrequency(frequency) {
     } else if (frequency < 1000) {
         return Math.round(frequency).toString() + " Hz";
     } else if (frequency < 10000) {
-        return (frequency / 1000).toFixed(2) + " kHz";
+        return (frequency / 1000).toFixed(2) + " KHz";
+    } else if (frequency < 100000) {
+        return (frequency / 1000).toFixed(1) + " KHz";
+    } else if (frequency < 1000000) {
+        return Math.round(frequency / 1000) + " KHz";
+    } else if (frequency < 10000000) {
+        return (frequency / 1000000).toFixed(2) + " MHz";
+    } else if (frequency < 100000000) {
+        return (frequency / 1000000).toFixed(1) + " MHz";
     } else {
-        return (frequency / 1000).toFixed(1) + " kHz";
+        return Math.round(frequency / 1000000) + " MHz";
     }
 }
 
@@ -412,6 +435,8 @@ function drawSpecFrequencyScale() {
     ctx.fillText(text, 8, ctx.canvas.height - 8);
 }
 
+function eventsInit()
+{
 /* zoom or pan when on scrolling
 
    If no modifier is pressed, scrolling scrolls the spectrogram.
@@ -524,4 +549,5 @@ window.onkeypress = function(e) {
 
     document.getElementById('specMode').value = specMode;
     window.requestAnimationFrame(drawScene);
+}
 }
