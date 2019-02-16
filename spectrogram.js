@@ -101,8 +101,215 @@ function initSpectrogram() {
    - specModeUniform: uSpecMode
 */
 function loadSpectrogramShaders() {
-    var fragmentShader = getShader('fragmentShader');
-    var vertexShader = getShader('vertexShader');
+    //
+    // creates a shader of the given type, uploads the source and
+    // compiles it.
+    //
+    function loadShader(gl, type, source) {
+      const shader = gl.createShader(type);
+
+      // Send the source to the shader object
+
+      gl.shaderSource(shader, source);
+
+      // Compile the shader program
+
+      gl.compileShader(shader);
+
+      // See if it compiled successfully
+
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        alert('An error occurred compiling the shaders: ' + gl.getShaderInfoLog(shader));
+        gl.deleteShader(shader);
+        return null;
+      }
+
+      return shader;
+    }
+
+    // Vertex shader program
+    var vsSource = `
+          attribute vec2 aVertexPosition;
+          attribute vec2 aTextureCoord;
+          uniform mat3 mZoom;
+          varying highp vec2 vTextureCoord;
+          void main() {
+              vec3 zoomedVertexPosition = vec3(aVertexPosition, 1.0) * mZoom;
+              gl_Position = vec4(zoomedVertexPosition, 1.0);
+              vTextureCoord = aTextureCoord;
+          }
+    `;
+
+    // Fragment shader program
+    var fsSource =  `
+          varying highp vec2 vTextureCoord;
+          uniform sampler2D uSampler;
+          uniform highp vec2 vAmpRange;
+          uniform highp vec2 vSpecSize;
+          uniform highp vec2 vDataSize;
+          uniform int uSpecMode;
+          uniform bool bSpecLogarithmic;
+          highp vec3 physicalColor(highp float amplitude) {
+            /*
+              The physical color scaling is partitioning the full [0 ... 1] range into
+              seven evenly spaced sub-ranges. That's what the modulo and floor are
+              doing. Then, each range modifies only one color channel while keeping
+              the other two constant. This is done in such a way that no two
+              different values map to the same color.
+              The ranges are:
+              1. black (0,0,0) to red (1,0,0)
+              2. red (1,0,0) to yellow (1,1,0)
+              3. yellow (1,1,0) to green (0,1,0)
+              4. green (0,1,0) to cyan (0,1,1)
+              5. cyan (0,1,1) to blue (0,0,1)
+              6. blue (0,0,1) to magenta (1,0,1)
+              7. magenta (1,0,1) to white (1,1,1)
+            */
+              highp float fractional = mod(amplitude*8.0, 1.0);
+              highp float integer = floor(amplitude*8.0);
+              if (integer == 0.0) {
+                  return vec3(fractional, 0.0, 0.0);
+              } else if (integer == 1.0) {
+                  return vec3(1.0, fractional, 0.0);
+              } else if (integer == 2.0) {
+                  return vec3(1.0-fractional, 1.0, 0.0);
+              } else if (integer == 3.0) {
+                  return vec3(0.0, 1.0, fractional);
+              } else if (integer == 4.0) {
+                  return vec3(0.0, 1.0-fractional, 1.0);
+              } else if (integer == 5.0) {
+                  return vec3(fractional, 0.0, 1.0);
+              } else if (integer == 6.0) {
+                  return vec3(1.0, 1.0-fractional, 1.0);
+              } else {
+                  return vec3(1.0, 1.0, 1.0);
+              }
+          }
+          // from http://lolengine.net/blog/2013/07/27/rgb-to-hsv-in-glsl
+          highp vec3 rgb2hsv(highp vec3 c)
+          {
+              highp vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+              highp vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+              highp vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+              highp float d = q.x - min(q.w, q.y);
+              highp float e = 1.0e-10;
+              return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+          }
+          // from http://lolengine.net/blog/2013/07/27/rgb-to-hsv-in-glsl
+          highp vec3 hsv2rgb(highp vec3 c)
+          {
+              highp vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+              highp vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+              return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+          }
+          highp float logScale(highp float value) {
+              value = 20.0*log(value)/log(10.0);
+              //value = max(value, vAmpRange[0]);
+              //value = min(value, vAmpRange[1]);
+              value = (value - vAmpRange[0]) / (vAmpRange[1] - vAmpRange[0]);
+              return value;
+          }
+          highp float getAmplitude(highp vec2 coord) {
+              if (bSpecLogarithmic) {
+                  coord.y = pow(vSpecSize.y, coord.y)/vSpecSize.y;
+                  coord.y += 1.0/512.0;
+              }
+              return texture2D(uSampler, coord).r;
+          }
+          highp vec3 physicalMode() {
+              highp float amplitude = getAmplitude(vTextureCoord);
+              return physicalColor(logScale(amplitude));
+          }
+          highp vec3 normalMode() {
+              highp float amplitude = getAmplitude(vTextureCoord);
+              amplitude = logScale(amplitude);
+              return vec3(amplitude, amplitude, amplitude);
+          }
+          highp vec3 direction() {
+              highp vec2 d = vec2(0.0, 0.0);
+              for (int x=0; x<=5; x++) {
+                  for (int y=-5; y<=5; y+=1) {
+                      highp vec2 vIter=vec2(x, y);
+                      highp float amplitude = getAmplitude(vTextureCoord+vIter/vDataSize) *
+                                              getAmplitude(vTextureCoord-vIter/vDataSize);
+                      d += vIter * amplitude / ((x==0&&y==0) ? 1.0 : sqrt(float(x*x + y*y)));
+                  }
+              }
+              highp float direction = atan(d.x, d.y)/3.14;
+              highp float strength = sqrt(d.x*d.x + d.y*d.y);
+              strength = logScale(strength*1000.0);
+              return hsv2rgb(vec3((direction-0.5), abs((direction-0.5))*2.0, strength));
+          }
+          highp float amplitudeAt(highp float angle, highp float distance) {
+              highp vec2 coord = vec2(cos(angle)*distance,
+                                      sin(angle)*distance);
+              highp float amplitude = getAmplitude(vTextureCoord+coord/vDataSize) *
+                                      getAmplitude(vTextureCoord-coord/vDataSize);
+              return amplitude;
+          }
+          highp float amplitudesAt(highp float angle) {
+              highp float amplitude = 0.0;
+              for (int i=1; i<=5; i++) {
+                  amplitude += amplitudeAt(angle, float(i))/float(i*i);
+              }
+              return amplitude;
+          }
+          highp vec3 direction2() {
+              highp vec2 histogram[16];
+              histogram[0] = vec2(amplitudesAt(-3.14), -3.14);
+              histogram[1] = vec2(amplitudesAt(-2.36), -2.36);
+              histogram[2] = vec2(amplitudesAt(-1.57), -1.57);
+              histogram[3] = vec2(amplitudesAt(-0.78), -0.78);
+              histogram[4] = vec2(amplitudesAt( 0.0 ),  0.0 );
+              histogram[5] = vec2(amplitudesAt( 0.78),  0.78);
+              histogram[6] = vec2(amplitudesAt( 1.57),  1.57);
+              histogram[7] = vec2(amplitudesAt( 2.36),  2.36);
+              histogram[9] = vec2(amplitudesAt( 3.14),  3.14);
+              highp vec2 max_value = vec2(0.0, 0.0);
+              max_value = histogram[0].x > max_value.x ? histogram[0] : max_value;
+              max_value = histogram[1].x > max_value.x ? histogram[1] : max_value;
+              max_value = histogram[2].x > max_value.x ? histogram[2] : max_value;
+              max_value = histogram[3].x > max_value.x ? histogram[3] : max_value;
+              max_value = histogram[4].x > max_value.x ? histogram[4] : max_value;
+              max_value = histogram[5].x > max_value.x ? histogram[5] : max_value;
+              max_value = histogram[6].x > max_value.x ? histogram[6] : max_value;
+              max_value = histogram[7].x > max_value.x ? histogram[7] : max_value;
+              max_value = histogram[8].x > max_value.x ? histogram[8] : max_value;
+              max_value = histogram[9].x > max_value.x ? histogram[9] : max_value;
+              // scale to a third color rotation from green to red.
+              highp float direction = max_value.y/3.14/3.0+0.333;
+              highp float value = logScale(max_value.x);
+              return hsv2rgb(vec3(direction, 1.0, value));
+          }
+          highp vec3 multiples() {
+              highp float amplitude = getAmplitude(vTextureCoord);
+              int iterations = 0;
+              for (int m=2; m<=5; m++) {
+                  highp float y = vTextureCoord.y*float(m);
+                  if (y<1.0) {
+                      amplitude *= getAmplitude(vec2(vTextureCoord.x, y));
+                      iterations++;
+                  }
+              }
+              amplitude = pow(amplitude, 1.0/float(iterations));
+              amplitude = logScale(amplitude);
+              return physicalColor(amplitude);
+          }
+          void main() {
+              if (uSpecMode == 0) {
+                  gl_FragColor = vec4(physicalMode(), 1.0);
+              } else if (uSpecMode == 1) {
+                  gl_FragColor = vec4(normalMode(), 1.0);
+              } else if (uSpecMode == 2) {
+                  gl_FragColor = vec4(direction2(), 1.0);
+              } else if (uSpecMode == 3) {
+                  gl_FragColor = vec4(multiples(), 1.0);
+              }
+          }
+    `;
+
+    var vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
+    var fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
 
     var shaderProgram = gl.createProgram();
     gl.attachShader(shaderProgram, vertexShader);
